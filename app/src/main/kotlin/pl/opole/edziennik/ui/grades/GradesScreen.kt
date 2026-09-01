@@ -189,7 +189,13 @@ private fun GradeEntryRow(entry: GradeEntry, repository: UsosRepository) {
             .clickable { expanded = !expanded }
             .padding(vertical = 10.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                entry.classType.replaceFirstChar { it.uppercase() },
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     entry.valueSymbol ?: "—",

@@ -25,6 +25,10 @@ data class RawGrade(
     val modificationAuthorName: String?,
     var courseName: String = "",
     var issuerName: String = "",
+    // Forma zajęć (wykład/ćwiczenia/projekt/...), dociągana osobno przez
+    // `courses/units` (classtype_id) + `courses/classtypes_index` (nazwa) —
+    // grades/terms2 daje tylko opaque `unitId`, bez samej nazwy formy.
+    var classType: String = "",
 )
 
 data class GradeEntry(
@@ -34,6 +38,7 @@ data class GradeEntry(
     val dateModified: String,
     val issuerName: String,
     val examId: Int?,
+    val classType: String,
 )
 
 data class CourseGrades(
@@ -192,6 +197,7 @@ fun groupGradesByTerm(grades: List<RawGrade>, ectsPoints: Map<Pair<String, Strin
                     dateModified = it.dateModified,
                     issuerName = it.issuerName,
                     examId = it.examId,
+                    classType = it.classType,
                 )
             },
             ectsPoints = courseId?.let { ectsPoints[key.term to it] },

@@ -23,11 +23,16 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 - **Plan miesięczny** — przełącznik roku akademickiego + zakładki miesięcy,
   te same kolorowe karty zajęć co w wersji webowej, klikalne do strony grupy.
 - **Strona ocen** (`/oceny`) — oceny pogrupowane po semestrze i przedmiocie,
-  punkty ECTS, średnia ważona; rozwinięcie oceny pokazuje datę wpisania,
-  autora i — jeśli ocena ma przypisany egzamin — rozkład procentowy ocen
-  całej grupy (`examrep/exam`), z własnym słupkiem pokolorowanym inaczej.
-  Bezpośrednie przeniesienie już zweryfikowanego na żywych danych parsowania
-  `grades/terms2` z app.py (patrz `data/Grades.kt`).
+  punkty ECTS, średnia ważona, forma zajęć przy każdej ocenie (wykład/
+  ćwiczenia/projekt/...) — `grades/terms2` daje tylko opaque `unit_id`, więc
+  nazwa formy jest dociągana osobno przez `courses/units` (unit_id →
+  classtype_id) + `courses/classtypes_index` (słownik ID → nazwa, metoda
+  publiczna, znaleziona przez `apiref`, ten sam trik co przy rozkładzie ocen).
+  Rozwinięcie oceny pokazuje datę wpisania, autora i — jeśli ocena ma
+  przypisany egzamin — rozkład procentowy ocen całej grupy (`examrep/exam`),
+  z własnym słupkiem pokolorowanym inaczej. Bezpośrednie przeniesienie już
+  zweryfikowanego na żywych danych parsowania `grades/terms2` z app.py
+  (patrz `data/Grades.kt`).
 - **Strona grupy** (klik w kartę zajęć na pulpicie/planie) — przedmiot,
   forma zajęć, prowadzący (klikalni) i pozostali uczestnicy.
 - **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt;

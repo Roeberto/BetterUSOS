@@ -297,11 +297,69 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                     ?: ""
             }
 
+            // Forma zajęć (wykład/ćwiczenia/...) — grades/terms2 daje tylko
+            // opaque unit_id, więc trzeba dwóch dodatkowych zapytań:
+            // unit_id -> classtype_id, potem classtype_id -> nazwa.
+            val unitIds = grades.mapNotNull { it.unitId }.toSet()
+            if (unitIds.isNotEmpty()) {
+                val classTypeIdByUnit = resolveUnitClassTypeIds(unitIds, forceRefresh)
+                val classTypeNames = fetchClassTypeNames(forceRefresh)
+                grades.forEach { g ->
+                    val classTypeId = g.unitId?.let { classTypeIdByUnit[it] }
+                    g.classType = classTypeId?.let { classTypeNames[it] } ?: ""
+                }
+            }
+
             Result.success(grades)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    /** Jedno zbiorcze zapytanie do `courses/units` — mapuje `unit_id` na
+     * `classtype_id` (opaque kod formy zajęć, np. "lecture", "ĆWICZ207" —
+     * jeszcze nie nazwę, tę trzeba osobno z `fetchClassTypeNames()`). */
+    private suspend fun resolveUnitClassTypeIds(unitIds: Set<String>, forceRefresh: Boolean = false): Map<String, String> =
+        withContext(Dispatchers.IO) {
+            if (unitIds.isEmpty()) return@withContext emptyMap()
+            val resp = get(
+                "courses/units",
+                mapOf("unit_ids" to unitIds.joinToString("|"), "fields" to "classtype_id"),
+                forceRefresh,
+            )
+            if (!resp.isSuccessful) return@withContext emptyMap()
+
+            val obj = JSONObject(resp.body)
+            val result = mutableMapOf<String, String>()
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val id = keys.next()
+                val u = obj.optJSONObject(id) ?: continue
+                u.optStringOrNull("classtype_id")?.let { result[id] = it }
+            }
+            result
+        }
+
+    /** Słownik WSZYSTKICH form zajęć w tej instalacji USOS (classtype_id ->
+     * nazwa po polsku) — `courses/classtypes_index`, metoda publiczna
+     * (bez wymaganej autoryzacji), ten sam trik co przy `examrep/exam` dla
+     * rozkładu ocen. Krótka, stała lista — jedno zapytanie starcza na
+     * wszystkie oceny naraz. */
+    private suspend fun fetchClassTypeNames(forceRefresh: Boolean = false): Map<String, String> =
+        withContext(Dispatchers.IO) {
+            val resp = get("courses/classtypes_index", mapOf("fields" to "id|name"), forceRefresh)
+            if (!resp.isSuccessful) return@withContext emptyMap()
+
+            val obj = JSONObject(resp.body)
+            val result = mutableMapOf<String, String>()
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val id = keys.next()
+                val c = obj.optJSONObject(id) ?: continue
+                result[id] = plText(c.opt("name"))
+            }
+            result
+        }
 
     /** Jedno zbiorcze zapytanie do `courses/courses` — odpowiednik
      * `resolve_course_names()` z app.py. */
