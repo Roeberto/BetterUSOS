@@ -44,6 +44,7 @@ import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
+import pl.opole.edziennik.ui.theme.CardShape
 import pl.opole.edziennik.ui.theme.PillShape
 import pl.opole.edziennik.viewmodel.GradesViewModel
 import pl.opole.edziennik.viewmodel.GradesViewModelFactory
@@ -99,7 +100,7 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 state.error?.let { item { ErrorBanner(modifier = Modifier.padding(bottom = 8.dp)) } }
 
@@ -138,7 +139,13 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
 
 @Composable
 private fun CourseSection(course: CourseGrades, repository: UsosRepository) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
+            .border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant, CardShape)
+            .padding(12.dp),
+    ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(course.courseName, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
             course.ectsPoints?.let {
