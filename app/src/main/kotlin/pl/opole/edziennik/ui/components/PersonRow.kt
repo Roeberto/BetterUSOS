@@ -53,7 +53,12 @@ fun PersonRow(person: Person, modifier: Modifier = Modifier, onClick: (() -> Uni
                     .background(Color(person.avatarColor)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(person.initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    person.initials,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                )
             }
         }
 

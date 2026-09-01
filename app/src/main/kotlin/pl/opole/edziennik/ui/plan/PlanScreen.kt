@@ -1,5 +1,6 @@
 package pl.opole.edziennik.ui.plan
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,14 +25,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.SessionCard
 import pl.opole.edziennik.ui.components.sessionCardClickHandler
+import pl.opole.edziennik.ui.theme.PillShape
 import pl.opole.edziennik.viewmodel.PlanViewModel
 import pl.opole.edziennik.viewmodel.PlanViewModelFactory
 import pl.opole.edziennik.viewmodel.academicYearMonths
@@ -43,8 +46,8 @@ import java.util.Locale
 
 /** Odpowiednik trasy `/plan` (plan.html) z aplikacji webowej — jeden
  * miesiąc naraz, z przełącznikiem roku i zakładkami miesięcy. Dane są
- * cache'owane na dysku — przycisk "⟳" wymusza świeże pobranie bieżącego
- * miesiąca. */
+ * cache'owane na dysku — przycisk odświeżania wymusza świeże pobranie
+ * bieżącego miesiąca. */
 @Composable
 fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController) {
     val repository = remember { UsosRepository(apiClient, cacheDir) }
@@ -59,10 +62,16 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
             TopAppBar(
                 title = { Text("Plan zajęć") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
+                    Box(Modifier.padding(start = 4.dp)) {
+                        AppIconButton(R.drawable.ic_back, "Wstecz") { navController.popBackStack() }
+                    }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.load(state.yearMonth, forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
+                    Box(Modifier.padding(end = 8.dp)) {
+                        AppIconButton(R.drawable.ic_refresh, "Odśwież") {
+                            viewModel.load(state.yearMonth, forceRefresh = true)
+                        }
+                    }
                 },
             )
         },
@@ -78,10 +87,16 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
             ) {
                 items(months) { month ->
                     val isSelected = month == state.yearMonth
-                    TextButton(onClick = { viewModel.load(month) }) {
+                    val background = if (isSelected) {
+                        Modifier.background(MaterialTheme.colorScheme.surfaceContainer, PillShape)
+                    } else {
+                        Modifier
+                    }
+                    TextButton(onClick = { viewModel.load(month) }, modifier = background) {
                         Text(
                             text = month.month.getDisplayName(TextStyle.SHORT, Locale("pl"))
                                 .replaceFirstChar { it.uppercase() },
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                     }

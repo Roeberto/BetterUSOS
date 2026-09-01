@@ -6,11 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.border
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,10 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.PersonRow
+import pl.opole.edziennik.ui.theme.PillShape
 import pl.opole.edziennik.viewmodel.GroupDetailViewModel
 import pl.opole.edziennik.viewmodel.GroupDetailViewModelFactory
 import java.io.File
@@ -36,7 +39,7 @@ import java.io.File
  * aplikacji webowej — przedmiot, forma zajęć, prowadzący (klikalni do strony
  * osoby) i lista pozostałych uczestników (bez samego zalogowanego użytkownika
  * — patrz `current_user_id()`/`fetchGroupDetail()`). Dane są cache'owane na
- * dysku — przycisk "⟳" wymusza świeże pobranie.
+ * dysku — przycisk odświeżania wymusza świeże pobranie.
  */
 @Composable
 fun GroupDetailScreen(
@@ -57,10 +60,14 @@ fun GroupDetailScreen(
             TopAppBar(
                 title = { Text("Grupa zajęciowa") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
+                    Box(Modifier.padding(start = 4.dp)) {
+                        AppIconButton(R.drawable.ic_back, "Wstecz") { navController.popBackStack() }
+                    }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
+                    Box(Modifier.padding(end = 8.dp)) {
+                        AppIconButton(R.drawable.ic_refresh, "Odśwież") { viewModel.refresh(forceRefresh = true) }
+                    }
                 },
             )
         },
@@ -79,11 +86,24 @@ fun GroupDetailScreen(
 
                     Column {
                         Text(detail.courseName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        if (detail.classType.isNotEmpty()) {
-                            Text(detail.classType, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val subline = listOfNotNull(
+                            detail.classType.ifEmpty { null },
+                            detail.groupNumber?.let { "Grupa nr $it" },
+                        ).joinToString(" · ")
+                        if (subline.isNotEmpty()) {
+                            Text(subline, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        detail.groupNumber?.let {
-                            Text("Grupa nr $it", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        detail.termId?.let {
+                            Text(
+                                it,
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .border(1.dp, MaterialTheme.colorScheme.primary, PillShape)
+                                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                            )
                         }
                     }
 
@@ -129,7 +149,7 @@ fun GroupDetailScreen(
                 CircularProgressIndicator()
             }
             state.error != null -> Text(
-                "Nie udało się pobrać danych grupy. Odpowiedź serwera: ${state.error}",
+                "Nie udało się pobrać danych grupy.",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(16.dp),
             )

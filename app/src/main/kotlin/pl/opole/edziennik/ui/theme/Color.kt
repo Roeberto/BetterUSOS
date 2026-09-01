@@ -11,6 +11,9 @@ val Rule = Color(0xFFCFD0C3)
 val Navy = Color(0xFF1F3A5C)
 val NavyDark = Color(0xFF16293F)
 val Oxblood = Color(0xFF7A3B34)
+// Tło "podniesionej" karty (np. spód karty zajęć z salą, karta płatności) —
+// stały krok jaśniejszy/ciemniejszy od Paper, żeby się od niego odcinał.
+val CardSub = Color(0xFFE2E4DA)
 
 val PaperDark = Color(0xFF1A1C18)
 val InkDark = Color(0xFFE7E6DF)
@@ -18,6 +21,7 @@ val InkMutedDark = Color(0xFFA3A69B)
 val RuleDark = Color(0xFF3A3D34)
 val NavyAccentDark = Color(0xFF8FB4DD)
 val OxbloodDark = Color(0xFFE0897A)
+val CardSubDark = Color(0xFF24261F)
 
 // Kolory form zajęć — te same wartości co --type-*-bg w style.css.
 val classTypeColors = mapOf(

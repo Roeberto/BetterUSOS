@@ -27,7 +27,7 @@ class PersonDetailViewModel(
         refresh(forceRefresh = false)
     }
 
-    /** `forceRefresh = true` (przycisk "⟳") pomija cache i zawsze pyta USOS
+    /** `forceRefresh = true` (przycisk odświeżania) pomija cache i zawsze pyta USOS
      * na nowo; przy błędzie zachowuje ostatnio pokazane dane osoby zamiast
      * czyścić ekran. */
     fun refresh(forceRefresh: Boolean = true) {

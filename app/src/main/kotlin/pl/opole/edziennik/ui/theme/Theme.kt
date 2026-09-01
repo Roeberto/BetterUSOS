@@ -16,7 +16,13 @@ private val LightColors = lightColorScheme(
     onSurface = Ink,
     surfaceVariant = Rule,
     onSurfaceVariant = InkMuted,
+    // Tło "podniesionej" karty (pasek sali pod zajęciami, karta płatności) —
+    // odpowiednik --card-sub-bg z style.css. surfaceVariant zostaje kolorem
+    // linii/obwódek (--rule), to jest osobna rola.
+    surfaceContainer = CardSub,
     error = Oxblood,
+    errorContainer = CardSub,
+    onErrorContainer = Ink,
 )
 
 private val DarkColors = darkColorScheme(
@@ -29,7 +35,10 @@ private val DarkColors = darkColorScheme(
     onSurface = InkDark,
     surfaceVariant = RuleDark,
     onSurfaceVariant = InkMutedDark,
+    surfaceContainer = CardSubDark,
     error = OxbloodDark,
+    errorContainer = CardSubDark,
+    onErrorContainer = InkDark,
 )
 
 /** Automatyczny tryb ciemny wg preferencji systemu — bez ręcznego

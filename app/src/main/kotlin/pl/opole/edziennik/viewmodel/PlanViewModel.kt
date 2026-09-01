@@ -33,7 +33,7 @@ class PlanViewModel(private val repository: UsosRepository) : ViewModel() {
         load(YearMonth.now())
     }
 
-    /** `forceRefresh = true` (przycisk "⟳") pomija cache i zawsze pyta USOS
+    /** `forceRefresh = true` (przycisk odświeżania) pomija cache i zawsze pyta USOS
      * na nowo; przy błędzie zachowuje ostatnio pokazane dni zamiast czyścić
      * ekran. */
     fun load(yearMonth: YearMonth, forceRefresh: Boolean = false) {

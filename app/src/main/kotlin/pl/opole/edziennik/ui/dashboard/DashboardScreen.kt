@@ -1,18 +1,21 @@
 package pl.opole.edziennik.ui.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -24,16 +27,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.SessionCard
 import pl.opole.edziennik.ui.components.sessionCardClickHandler
+import pl.opole.edziennik.ui.theme.CardShape
 import pl.opole.edziennik.viewmodel.AuthViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModelFactory
@@ -42,11 +48,10 @@ import java.util.Locale
 
 /** Odpowiednik trasy `/dashboard` (dashboard.html) z aplikacji webowej —
  * płatności + plan na najbliższe 7 dni. Nawigacja do Ocen/Planu/Wylogowania
- * jest na pasku na dole ekranu (łatwiej trafić kciukiem niż w rozwijane
- * menu w rogu). Dane są cache'owane na dysku (patrz `UsosRepository`) —
- * przycisk "⟳" wymusza świeże pobranie; jeśli ono zawiedzie, ostatnio
- * pokazane dane zostają na ekranie razem z małym banerem błędu (patrz
- * `ErrorBanner`), zamiast znikać. */
+ * jest na pasku na dole ekranu. Dane są cache'owane na dysku (patrz
+ * `UsosRepository`) — przycisk odświeżania wymusza świeże pobranie; jeśli
+ * ono zawiedzie, ostatnio pokazane dane zostają na ekranie razem z małym
+ * banerem błędu (patrz `ErrorBanner`), zamiast znikać. */
 @Composable
 fun DashboardScreen(
     apiClient: UsosApiClient,
@@ -63,27 +68,20 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("e-dziennik") },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
-                    TextButton(onClick = { navController.navigate("notifications") }) { Text("🔔", fontSize = 20.sp) }
+                    AppIconButton(R.drawable.ic_refresh, "Odśwież") { viewModel.refresh(forceRefresh = true) }
+                    Box(Modifier.padding(start = 8.dp, end = 4.dp)) {
+                        AppIconButton(R.drawable.ic_bell, "Powiadomienia") { navController.navigate("notifications") }
+                    }
                 },
             )
         },
         bottomBar = {
             BottomAppBar {
-                TextButton(onClick = { navController.navigate("grades") }, modifier = Modifier.weight(1f)) {
-                    Text("Oceny")
-                }
-                TextButton(onClick = { navController.navigate("plan") }, modifier = Modifier.weight(1f)) {
-                    Text("Plan")
-                }
-                TextButton(
-                    onClick = {
-                        authViewModel.logout()
-                        navController.navigate("login") { popUpTo(0) }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Wyloguj")
+                BottomNavItem(R.drawable.ic_grades, "Oceny", Modifier.weight(1f)) { navController.navigate("grades") }
+                BottomNavItem(R.drawable.ic_calendar, "Plan", Modifier.weight(1f)) { navController.navigate("plan") }
+                BottomNavItem(R.drawable.ic_logout, "Wyloguj", Modifier.weight(1f)) {
+                    authViewModel.logout()
+                    navController.navigate("login") { popUpTo(0) }
                 }
             }
         },
@@ -105,35 +103,61 @@ fun DashboardScreen(
 
             state.paymentsError?.let { item { ErrorBanner() } }
 
-            when {
-                state.payments.isEmpty() -> item {
-                    Text("Brak zaległych płatności.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                else -> {
-                    item {
+            item {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CardShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
+                        .padding(horizontal = 14.dp),
+                ) {
+                    if (state.payments.isEmpty()) {
                         Text(
-                            "Do zapłaty łącznie: ${amount(state.paymentsTotal)} ${state.payments.first().currency}",
-                            fontWeight = FontWeight.Bold,
+                            "Brak zaległych płatności.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 14.dp),
                         )
-                    }
-                    items(state.payments) { payment ->
-                        Column(
+                    } else {
+                        Row(
                             Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
-                                .padding(12.dp),
+                                .padding(top = 12.dp, bottom = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text(payment.typeLabel + (payment.description?.let { " — $it" } ?: ""))
-                            payment.paymentDeadline?.let {
-                                Text("termin: $it", style = MaterialTheme.typography.labelSmall)
+                            Text("Do zapłaty łącznie", fontWeight = FontWeight.Bold)
+                            Text(
+                                "${amount(state.paymentsTotal)} ${state.payments.first().currency}",
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(2.dp)
+                                .background(MaterialTheme.colorScheme.onSurface),
+                        )
+                        state.payments.forEachIndexed { index, payment ->
+                            Column(Modifier.fillMaxWidth().padding(vertical = 11.dp)) {
+                                Text(payment.typeLabel + (payment.description?.let { " — $it" } ?: ""))
+                                payment.paymentDeadline?.let {
+                                    Text("termin: $it", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Text("${amount(payment.amount)} ${payment.currency}", fontWeight = FontWeight.SemiBold)
                             }
-                            Text("${amount(payment.amount)} ${payment.currency}", fontWeight = FontWeight.SemiBold)
+                            if (index != state.payments.lastIndex) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            item { Text("Plan zajęć — najbliższe 7 dni", style = MaterialTheme.typography.titleMedium) }
+            item { Text("Plan zajęć — najbliższe 7 dni", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp)) }
 
             state.scheduleError?.let { item { ErrorBanner() } }
 
@@ -153,6 +177,21 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BottomNavItem(iconRes: Int, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 2.dp),
+            )
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

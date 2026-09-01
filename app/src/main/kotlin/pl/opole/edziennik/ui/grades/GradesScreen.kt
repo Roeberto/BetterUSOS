@@ -1,6 +1,7 @@
 package pl.opole.edziennik.ui.grades
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,12 +36,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import pl.opole.edziennik.R
 import pl.opole.edziennik.data.CourseGrades
 import pl.opole.edziennik.data.DistributionBar
 import pl.opole.edziennik.data.GradeEntry
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
+import pl.opole.edziennik.ui.theme.PillShape
 import pl.opole.edziennik.viewmodel.GradesViewModel
 import pl.opole.edziennik.viewmodel.GradesViewModelFactory
 import java.io.File
@@ -53,7 +56,7 @@ import java.util.Locale
  * Rozkład ocen grupy jest dociągany dopiero po rozwinięciu wpisu (ten sam
  * wzorzec co inline `<details>` w wersji webowej) i pokazany razem z resztą
  * dodatkowych informacji o ocenie, nie osobno. Dane są cache'owane na dysku —
- * przycisk "⟳" wymusza świeże pobranie.
+ * przycisk odświeżania wymusza świeże pobranie.
  */
 @Composable
 fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController) {
@@ -66,10 +69,14 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
             TopAppBar(
                 title = { Text("Oceny") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
+                    Box(Modifier.padding(start = 4.dp)) {
+                        AppIconButton(R.drawable.ic_back, "Wstecz") { navController.popBackStack() }
+                    }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
+                    Box(Modifier.padding(end = 8.dp)) {
+                        AppIconButton(R.drawable.ic_refresh, "Odśwież") { viewModel.refresh(forceRefresh = true) }
+                    }
                 },
             )
         },
@@ -92,16 +99,21 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                state.error?.let { item { ErrorBanner() } }
+                state.error?.let { item { ErrorBanner(modifier = Modifier.padding(bottom = 8.dp)) } }
 
                 state.weightedAverage?.let { average ->
                     item {
                         Text(
                             "Średnia ważona: ${formatNumber(average, 2)}",
-                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .padding(bottom = 18.dp)
+                                .border(1.dp, MaterialTheme.colorScheme.primary, PillShape)
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
                         )
                     }
                 }
@@ -109,13 +121,15 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
                 state.termSections.forEach { section ->
                     item {
                         Text(
-                            section.term ?: "—",
-                            style = MaterialTheme.typography.titleSmall,
+                            (section.term ?: "—").uppercase(),
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(top = 14.dp, bottom = 2.dp),
                         )
                     }
-                    items(section.courses) { course -> CourseCard(course, repository) }
+                    items(section.courses) { course -> CourseSection(course, repository) }
                 }
             }
         }
@@ -123,18 +137,10 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
 }
 
 @Composable
-private fun CourseCard(course: CourseGrades, repository: UsosRepository) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-            .padding(12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(course.courseName, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+private fun CourseSection(course: CourseGrades, repository: UsosRepository) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(course.courseName, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
             course.ectsPoints?.let {
                 Text(
                     "${formatNumber(it, 1)} ECTS",
@@ -143,8 +149,17 @@ private fun CourseCard(course: CourseGrades, repository: UsosRepository) {
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        course.entries.forEach { entry -> GradeEntryRow(entry, repository) }
+        course.entries.forEachIndexed { index, entry ->
+            GradeEntryRow(entry, repository)
+            if (index != course.entries.lastIndex) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
+        }
     }
 }
 
@@ -172,26 +187,24 @@ private fun GradeEntryRow(entry: GradeEntry, repository: UsosRepository) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded }
-            .padding(vertical = 6.dp),
+            .padding(vertical = 10.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(entry.valueSymbol ?: "—", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            if (entry.valueDescription.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    entry.valueDescription,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    entry.valueSymbol ?: "—",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.secondary,
                 )
+                if (entry.valueDescription.isNotEmpty()) {
+                    Text(entry.valueDescription, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
 
         if (expanded) {
-            Column(Modifier.padding(top = 6.dp)) {
+            Column(Modifier.padding(top = 8.dp)) {
                 if (entry.dateModified.isNotEmpty()) {
                     Text("Wprowadzono: ${entry.dateModified}", fontSize = 12.sp)
                 }
@@ -201,13 +214,24 @@ private fun GradeEntryRow(entry: GradeEntry, repository: UsosRepository) {
 
                 if (entry.examId != null) {
                     when {
-                        distributionLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        distributionLoading -> CircularProgressIndicator(
+                            modifier = Modifier.padding(top = 8.dp).size(20.dp),
+                        )
                         distributionError != null -> Text(
-                            "Nie udało się pobrać rozkładu ocen: $distributionError",
+                            "Nie udało się pobrać rozkładu ocen.",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
-                        distribution != null -> DistributionChart(distribution!!, entry.valueSymbol)
+                        distribution != null -> Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .background(MaterialTheme.colorScheme.surfaceContainer, PillShape)
+                                .padding(12.dp),
+                        ) {
+                            DistributionChart(distribution!!, entry.valueSymbol)
+                        }
                     }
                 }
             }
@@ -221,36 +245,45 @@ private fun GradeEntryRow(entry: GradeEntry, repository: UsosRepository) {
 @Composable
 private fun DistributionChart(bars: List<DistributionBar>, mySymbol: String?) {
     val maxPercent = bars.maxOfOrNull { it.percent }?.takeIf { it > 0.0 } ?: 1.0
-    val maxBarHeight = 64.dp
+    val maxBarHeight = 56.dp
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        bars.forEach { bar ->
-            val isMine = bar.symbol == mySymbol
-            val barHeight = maxBarHeight * (bar.percent / maxPercent).toFloat().coerceIn(0.03f, 1f)
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("${Math.round(bar.percent)}%", fontSize = 10.sp)
-                Spacer(Modifier.height(2.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(barHeight)
-                        .background(
-                            if (isMine) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(2.dp),
-                        ),
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    bar.symbol,
-                    fontSize = 11.sp,
-                    fontWeight = if (isMine) FontWeight.Bold else FontWeight.Normal,
-                )
+    Column {
+        Text(
+            "Rozkład ocen grupy",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            bars.forEach { bar ->
+                val isMine = bar.symbol == mySymbol
+                val barHeight = maxBarHeight * (bar.percent / maxPercent).toFloat().coerceIn(0.03f, 1f)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("${Math.round(bar.percent)}%", fontSize = 10.sp)
+                    Spacer(Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(barHeight)
+                            .background(
+                                if (isMine) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(2.dp),
+                            ),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        bar.symbol,
+                        fontSize = 11.sp,
+                        fontWeight = if (isMine) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isMine) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

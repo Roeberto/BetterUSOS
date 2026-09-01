@@ -10,18 +10,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.data.SessionEntry
 import pl.opole.edziennik.data.hm
+import pl.opole.edziennik.ui.theme.CardShape
 import pl.opole.edziennik.ui.theme.colorForType
 
 /** Zwraca handler nawigacji do strony grupy (`/grupa/<unit_id>/<group_number>`
@@ -47,7 +46,7 @@ fun SessionCard(entry: SessionEntry, modifier: Modifier = Modifier, onClick: (()
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .border(2.dp, accent, RoundedCornerShape(4.dp))
+            .border(2.dp, accent, CardShape)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
     ) {
         Column(
@@ -60,19 +59,33 @@ fun SessionCard(entry: SessionEntry, modifier: Modifier = Modifier, onClick: (()
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("${hm(entry.startTime)}–${hm(entry.endTime)}", color = Color.White, fontSize = 13.sp)
+                Text(
+                    "${hm(entry.startTime)}–${hm(entry.endTime)}",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 13.sp,
+                )
                 if (entry.typeAbbr.isNotEmpty()) {
-                    Text(entry.typeAbbr, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(
+                        entry.typeAbbr,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                    )
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Text(entry.displayName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(
+                entry.displayName,
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+            )
         }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(12.dp),
         ) {
             if (entry.lecturersDisplay.isNotEmpty()) {

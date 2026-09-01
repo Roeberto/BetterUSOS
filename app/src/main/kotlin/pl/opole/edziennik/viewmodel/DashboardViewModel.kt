@@ -31,7 +31,7 @@ class DashboardViewModel(private val repository: UsosRepository) : ViewModel() {
 
     /**
      * `forceRefresh = false` (wejście na ekran) pokazuje dane z trwałego
-     * cache, jeśli już tam są. `forceRefresh = true` (przycisk "⟳") zawsze
+     * cache, jeśli już tam są. `forceRefresh = true` (przycisk odświeżania) zawsze
      * pyta USOS na nowo. Jeśli wymuszone odświeżenie zawiedzie, zachowujemy
      * ostatnio pokazane dane zamiast czyścić ekran — użytkownik widzi stare
      * dane razem z komunikatem błędu.

@@ -27,7 +27,7 @@ class GradesViewModel(private val repository: UsosRepository) : ViewModel() {
         refresh()
     }
 
-    /** `forceRefresh = true` (przycisk "⟳") pomija cache i zawsze pyta USOS
+    /** `forceRefresh = true` (przycisk odświeżania) pomija cache i zawsze pyta USOS
      * na nowo; przy błędzie zachowuje ostatnio pokazane oceny zamiast
      * czyścić ekran. */
     fun refresh(forceRefresh: Boolean = false) {

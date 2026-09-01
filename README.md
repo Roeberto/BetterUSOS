@@ -6,15 +6,12 @@ Twojego komputera, o ile masz zasięg internetu na telefonie.
 
 ## Ważne zastrzeżenie
 
-Ten kod został napisany **bez możliwości kompilacji i uruchomienia** — w
-środowisku, w którym powstał, nie było zainstalowanego Android SDK ani
-Gradle. Logika biznesowa (grupowanie planu po dniach, rozpoznawanie formy
-zajęć, filtrowanie płatności) jest bezpośrednim przeniesieniem tego, co
-już zweryfikowaliśmy na żywych danych w `app.py` — ale sama warstwa
-Androida (Compose, nawigacja, OAuth1 przez przeglądarkę) nie przeszła
-żadnego realnego testu. Otwórz to w Android Studio, zsynchronizuj Gradle
-i napraw to, na co Android Studio wskaże — potraktuj to jako solidny
-punkt startowy, nie gotowy produkt.
+Projekt buduje się czysto przez `./gradlew assembleDebug` (zweryfikowane
+wielokrotnie) i był testowany na żywym urządzeniu przez Ciebie w trakcie
+kolejnych iteracji — logowanie, cache, sync w tle i większość ekranów
+działały poprawnie. Traktuj to mimo wszystko jako projekt rozwijany
+iteracyjnie, nie w pełni "gotowy produkt" — kolejne funkcje wciąż mogą
+ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 
 ## Co jest zaimplementowane
 
@@ -37,9 +34,15 @@ punkt startowy, nie gotowy produkt.
   zdjęcie z USOS albo awatar z inicjałami (Coil do ładowania zdjęć).
 - **Tryb ciemny** — automatyczny, wg ustawień systemu (Material3 daje to
   za darmo, bez ręcznego przełącznika jak w wersji webowej).
+- **Spójny wygląd "ledgerowy"** przeniesiony z wersji webowej — ta sama
+  para fontów (Source Serif 4 do nagłówków, Inter do treści, dołączone na
+  stałe w `res/font/`), ostre 2-3px rogi zamiast domyślnych zaokrąglonych
+  kart Material, dokładnie te same kolory (`ui/theme/Color.kt`). Prawdziwe
+  ikony wektorowe (`res/drawable/ic_*.xml`) zamiast emoji jako zamienników
+  ikon.
 - **Trwały cache odpowiedzi USOS API** (`data/DiskCache.kt`) — dane widoczne
   od razu przy wejściu na ekran (bez czekania na sieć), nawet po restarcie
-  appki. Przycisk "⟳" w pasku górnym każdego ekranu wymusza świeże pobranie
+  appki. Przycisk odświeżania w pasku górnym każdego ekranu wymusza świeże pobranie
   i nadpisuje cache; jeśli wymuszone odświeżenie akurat zawiedzie (np. brak
   sieci), ekran zostaje przy ostatnio pokazanych danych zamiast pustego
   ekranu z błędem. Cache nie ma czasu wygasania — trwa do ręcznego
