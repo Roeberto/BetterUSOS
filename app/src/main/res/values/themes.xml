@@ -1,0 +1,5 @@
+<resources>
+    <!-- Compose steruje właściwym motywem (patrz ui/theme/Theme.kt) — to jest
+         tylko motyw startowy, zanim Compose przejmie kontrolę. -->
+    <style name="Theme.Edziennik" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

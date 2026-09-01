@@ -1,0 +1,88 @@
+# e-dziennik — natywna aplikacja Android (Kotlin + Jetpack Compose)
+
+Natywny odpowiednik aplikacji webowej z `../app.py`, rozmawiający bezpośrednio
+z USOS API (bez pośrednictwa serwera Flask) — czyli działa też offline od
+Twojego komputera, o ile masz zasięg internetu na telefonie.
+
+## Ważne zastrzeżenie
+
+Ten kod został napisany **bez możliwości kompilacji i uruchomienia** — w
+środowisku, w którym powstał, nie było zainstalowanego Android SDK ani
+Gradle. Logika biznesowa (grupowanie planu po dniach, rozpoznawanie formy
+zajęć, filtrowanie płatności) jest bezpośrednim przeniesieniem tego, co
+już zweryfikowaliśmy na żywych danych w `app.py` — ale sama warstwa
+Androida (Compose, nawigacja, OAuth1 przez przeglądarkę) nie przeszła
+żadnego realnego testu. Otwórz to w Android Studio, zsynchronizuj Gradle
+i napraw to, na co Android Studio wskaże — potraktuj to jako solidny
+punkt startowy, nie gotowy produkt.
+
+## Co jest zaimplementowane
+
+- **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
+  przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
+  (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
+- **Pulpit** — sekcja płatności (z tą samą logiką filtrowania po `state`,
+  którą ustaliliśmy na żywych danych) i plan zajęć na najbliższe 7 dni.
+- **Plan miesięczny** — przełącznik roku akademickiego + zakładki miesięcy,
+  te same kolorowe karty zajęć co w wersji webowej, klikalne do strony grupy.
+- **Strona ocen** (`/oceny`) — oceny pogrupowane po semestrze i przedmiocie,
+  punkty ECTS, średnia ważona; rozwinięcie oceny pokazuje datę wpisania,
+  autora i — jeśli ocena ma przypisany egzamin — rozkład procentowy ocen
+  całej grupy (`examrep/exam`), z własnym słupkiem pokolorowanym inaczej.
+  Bezpośrednie przeniesienie już zweryfikowanego na żywych danych parsowania
+  `grades/terms2` z app.py (patrz `data/Grades.kt`).
+- **Strona grupy** (klik w kartę zajęć na pulpicie/planie) — przedmiot,
+  forma zajęć, prowadzący (klikalni) i pozostali uczestnicy.
+- **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt;
+  zdjęcie z USOS albo awatar z inicjałami (Coil do ładowania zdjęć).
+- **Tryb ciemny** — automatyczny, wg ustawień systemu (Material3 daje to
+  za darmo, bez ręcznego przełącznika jak w wersji webowej).
+- **Trwały cache odpowiedzi USOS API** (`data/DiskCache.kt`) — dane widoczne
+  od razu przy wejściu na ekran (bez czekania na sieć), nawet po restarcie
+  appki. Przycisk "⟳" w pasku górnym każdego ekranu wymusza świeże pobranie
+  i nadpisuje cache; jeśli wymuszone odświeżenie akurat zawiedzie (np. brak
+  sieci), ekran zostaje przy ostatnio pokazanych danych zamiast pustego
+  ekranu z błędem. Cache nie ma czasu wygasania — trwa do ręcznego
+  odświeżenia.
+
+## Uruchomienie
+
+1. Otwórz folder `native_app/` w Android Studio (Open → wybierz ten
+   folder). Android Studio powinno samo zaproponować dogenerowanie
+   Gradle Wrappera, jeśli go zabraknie.
+2. Skopiuj `local.properties.example` do `local.properties` (ten drugi jest
+   zignorowany przez git) i uzupełnij `USOS_CONSUMER_KEY`/
+   `USOS_CONSUMER_SECRET` tymi samymi danymi co w `.env` aplikacji webowej —
+   Gradle wstrzykuje je do `BuildConfig`, `Config.kt` czyta je stamtąd, więc
+   nigdy nie trafiają do kodu ani do repozytorium.
+3. Zsynchronizuj Gradle (Android Studio zrobi to samo po otwarciu) i
+   napraw wszystko, co czerwone — wersje zależności w `app/build.gradle.kts`
+   mogą wymagać drobnej korekty w zależności od wersji Android Studio.
+4. Uruchom na emulatorze albo prawdziwym telefonie (Run ▶).
+
+### Callback OAuth — jedna rzecz do sprawdzenia
+
+Jeśli logowanie zwróci błąd o niedozwolonym adresie zwrotnym, może być
+potrzebne dodanie `edziennik://oauth-callback` jako dozwolonego callbacku
+w ustawieniach Twojej aplikacji na
+https://usosapps.po.edu.pl/developers/ — dokładnie ten sam problem, który
+w wersji webowej rozwiązaliśmy dynamicznym wyliczaniem adresu po stronie
+serwera; tu, bez serwera pośredniczącego, trzeba będzie ustawić to raz,
+na sztywno (o ile ta instalacja USOS w ogóle to sprawdza — w wersji
+webowej dynamiczny callback działał bez rejestrowania dodatkowych
+adresów, więc jest szansa, że zadziała od razu).
+
+## Struktura projektu
+
+```
+native_app/
+  app/src/main/kotlin/pl/opole/edziennik/
+    Config.kt              — dane konsumenta USOS (uzupełnij!)
+    MainActivity.kt         — punkt wejścia, obsługa powrotu z przeglądarki
+    oauth/                  — podpisywanie OAuth1, logowanie, trwały token
+    network/                — klient HTTP do USOS API
+    data/                   — parsowanie odpowiedzi USOS (odpowiednik app.py)
+    viewmodel/               — stan ekranów
+    ui/                      — ekrany Compose (login/dashboard/plan/oceny/
+                                grupa/osoba) + motyw
+```
