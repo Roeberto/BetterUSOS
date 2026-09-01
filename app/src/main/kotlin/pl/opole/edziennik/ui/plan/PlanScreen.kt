@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.SessionCard
 import pl.opole.edziennik.ui.components.sessionCardClickHandler
 import pl.opole.edziennik.viewmodel.PlanViewModel
@@ -87,23 +88,22 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
             }
 
             when {
-                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                state.isLoading && state.days.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-                state.error != null -> Text(
-                    "Nie udało się pobrać planu. Odpowiedź serwera: ${state.error}",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
-                )
-                state.days.isEmpty() -> Text(
-                    "Brak zajęć w tym miesiącu.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
-                )
+                state.days.isEmpty() -> Column {
+                    state.error?.let { ErrorBanner(it, modifier = Modifier.padding(16.dp)) }
+                    Text(
+                        "Brak zajęć w tym miesiącu.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
                 else -> LazyColumn(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    state.error?.let { error -> item { ErrorBanner(error) } }
                     state.days.forEach { day ->
                         item { Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold) }
                         items(day.entries) { entry ->

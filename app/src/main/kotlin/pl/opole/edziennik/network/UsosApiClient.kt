@@ -5,6 +5,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import pl.opole.edziennik.oauth.OAuth1Signer
+import java.io.IOException
 
 data class UsosResponse(val isSuccessful: Boolean, val body: String)
 
@@ -12,6 +13,16 @@ data class UsosResponse(val isSuccessful: Boolean, val body: String)
  * Cienki klient USOS API — podpisuje każde zapytanie OAuth1 (HMAC-SHA1) i
  * woła `{baseUrl}/services/{method}`, dokładnie jak `usos_url()` w
  * aplikacji webowej.
+ *
+ * UWAGA: błędy sieciowe (brak internetu, brak DNS...) są tu łapane i
+ * zamieniane na zwykłe `UsosResponse(isSuccessful = false, ...)`, zamiast
+ * pozwolić `IOException` z OkHttp lecieć dalej. Dzięki temu każde miejsce
+ * wywołujące `get()`/`post()` może polegać na jednym, prostym sprawdzeniu
+ * `resp.isSuccessful` — nie trzeba pamiętać o try/catch przy każdym nowym
+ * wywołaniu (i o tym łatwo zapomnieć, co spowodowało realny crash appki po
+ * kliknięciu w "Oceny" bez internetu — `fetchEctsPoints()` nie miało
+ * własnego try/catch, a wyjątek z tego miejsca lądował bezpośrednio w
+ * korutynie ViewModelu, zabijając cały proces).
  */
 class UsosApiClient(
     val baseUrl: String,
@@ -33,9 +44,7 @@ class UsosApiClient(
         }.build()
 
         val request = Request.Builder().url(httpUrl).get().build()
-        client.newCall(request).execute().use { response ->
-            return UsosResponse(response.isSuccessful, response.body?.string().orEmpty())
-        }
+        return executeSafely(request)
     }
 
     fun post(method: String, params: Map<String, String> = emptyMap()): UsosResponse {
@@ -48,10 +57,17 @@ class UsosApiClient(
         }.build()
 
         val request = Request.Builder().url(url).post(formBody).build()
-        client.newCall(request).execute().use { response ->
-            return UsosResponse(response.isSuccessful, response.body?.string().orEmpty())
-        }
+        return executeSafely(request)
     }
+
+    private fun executeSafely(request: Request): UsosResponse =
+        try {
+            client.newCall(request).execute().use { response ->
+                UsosResponse(response.isSuccessful, response.body?.string().orEmpty())
+            }
+        } catch (e: IOException) {
+            UsosResponse(isSuccessful = false, body = e.message ?: "Błąd sieci.")
+        }
 
     private fun sign(method: String, url: String, params: Map<String, String>): Map<String, String> =
         OAuth1Signer.sign(

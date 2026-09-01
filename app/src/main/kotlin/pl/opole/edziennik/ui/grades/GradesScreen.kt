@@ -41,6 +41,7 @@ import pl.opole.edziennik.data.DistributionBar
 import pl.opole.edziennik.data.GradeEntry
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.viewmodel.GradesViewModel
 import pl.opole.edziennik.viewmodel.GradesViewModelFactory
 import java.io.File
@@ -74,24 +75,27 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
         },
     ) { padding ->
         when {
-            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            state.isLoading && state.termSections.isEmpty() -> Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
                 CircularProgressIndicator()
             }
-            state.error != null -> Text(
-                "Nie udało się pobrać ocen. Odpowiedź serwera: ${state.error}",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp),
-            )
-            state.termSections.isEmpty() -> Text(
-                "Brak ocen do wyświetlenia.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
-            )
+            state.termSections.isEmpty() -> Column(Modifier.padding(padding)) {
+                state.error?.let { ErrorBanner(it, modifier = Modifier.padding(16.dp)) }
+                Text(
+                    "Brak ocen do wyświetlenia.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                state.error?.let { error -> item { ErrorBanner(error) } }
+
                 state.weightedAverage?.let { average ->
                     item {
                         Text(

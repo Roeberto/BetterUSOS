@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.PersonRow
 import pl.opole.edziennik.viewmodel.GroupDetailViewModel
 import pl.opole.edziennik.viewmodel.GroupDetailViewModelFactory
@@ -64,14 +65,6 @@ fun GroupDetailScreen(
         },
     ) { padding ->
         when {
-            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.error != null -> Text(
-                "Nie udało się pobrać danych grupy. Odpowiedź serwera: ${state.error}",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp),
-            )
             state.detail != null -> {
                 val detail = state.detail!!
                 Column(
@@ -81,6 +74,8 @@ fun GroupDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    state.error?.let { ErrorBanner(it) }
+
                     Column {
                         Text(detail.courseName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         if (detail.classType.isNotEmpty()) {
@@ -129,6 +124,14 @@ fun GroupDetailScreen(
                     }
                 }
             }
+            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            state.error != null -> Text(
+                "Nie udało się pobrać danych grupy. Odpowiedź serwera: ${state.error}",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(16.dp),
+            )
         }
     }
 }

@@ -31,6 +31,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.viewmodel.PersonDetailViewModel
 import pl.opole.edziennik.viewmodel.PersonDetailViewModelFactory
 import java.io.File
@@ -63,14 +64,6 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
         },
     ) { padding ->
         when {
-            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.error != null -> Text(
-                "Nie udało się pobrać danych osoby. Odpowiedź serwera: ${state.error}",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp),
-            )
             state.detail != null -> {
                 val detail = state.detail!!
                 val person = detail.person
@@ -82,6 +75,8 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    state.error?.let { ErrorBanner(it) }
+
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         if (person.photoUrl != null) {
                             AsyncImage(
@@ -156,6 +151,14 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                     }
                 }
             }
+            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            state.error != null -> Text(
+                "Nie udało się pobrać danych osoby. Odpowiedź serwera: ${state.error}",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(16.dp),
+            )
         }
     }
 }
