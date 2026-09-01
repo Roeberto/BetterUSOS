@@ -1,6 +1,7 @@
 package pl.opole.edziennik.ui.plan
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,8 +23,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import kotlinx.coroutines.launch
 import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
@@ -47,6 +46,7 @@ import pl.opole.edziennik.viewmodel.PlanViewModelFactory
 import pl.opole.edziennik.viewmodel.academicYearMonths
 import pl.opole.edziennik.viewmodel.academicYearStart
 import java.io.File
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
@@ -55,8 +55,10 @@ import java.util.Locale
  * miesiąc naraz, z przełącznikiem roku, zakładkami miesięcy i paskiem
  * szybkiego wyboru dnia (tylko dni z zajęciami — `state.days` i tak
  * zawiera wyłącznie takie, patrz `group_by_day` w app.py/`groupByDay` w
- * UsosRepository). Dane są cache'owane na dysku — przycisk odświeżania
- * wymusza świeże pobranie bieżącego miesiąca. */
+ * UsosRepository). Wybranie dnia filtruje widok do samego niego; ponowne
+ * kliknięcie tego samego dnia znowu pokazuje cały miesiąc. Dane są
+ * cache'owane na dysku — przycisk odświeżania wymusza świeże pobranie
+ * bieżącego miesiąca. */
 @Composable
 fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController) {
     val repository = remember { UsosRepository(apiClient, cacheDir) }
@@ -66,22 +68,10 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
     val startYear = academicYearStart(state.yearMonth)
     val months = academicYearMonths(startYear)
 
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-
-    // Indeks elementu nagłówka każdego dnia w LazyColumn poniżej — lista
-    // przeplata nagłówki dni i karty zajęć o zmiennej długości, więc trzeba
-    // to policzyć samemu, żeby wiedzieć, dokąd przewinąć po kliknięciu w
-    // pasek wyboru dnia.
-    val dayItemIndices = remember(state.days, state.error) {
-        val indices = mutableListOf<Int>()
-        var index = if (state.error != null) 1 else 0
-        state.days.forEach { day ->
-            indices.add(index)
-            index += 1 + day.entries.size
-        }
-        indices
-    }
+    // Reset filtra dnia przy zmianie miesiąca — stary wybór nie miałby
+    // sensu w nowym zestawie dni.
+    var selectedDay by remember(state.yearMonth) { mutableStateOf<LocalDate?>(null) }
+    val visibleDays = if (selectedDay != null) state.days.filter { it.date == selectedDay } else state.days
 
     Scaffold(
         topBar = {
@@ -134,11 +124,19 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    itemsIndexed(state.days) { i, day ->
+                    items(state.days) { day ->
+                        val isSelected = day.date == selectedDay
                         Column(
                             modifier = Modifier
                                 .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(2.dp))
-                                .clickable { scope.launch { listState.animateScrollToItem(dayItemIndices[i]) } }
+                                .let {
+                                    if (isSelected) {
+                                        it.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                                    } else {
+                                        it
+                                    }
+                                }
+                                .clickable { selectedDay = if (isSelected) null else day.date }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -171,12 +169,11 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
                     )
                 }
                 else -> LazyColumn(
-                    state = listState,
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     state.error?.let { item { ErrorBanner() } }
-                    state.days.forEach { day ->
+                    visibleDays.forEach { day ->
                         item { Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold) }
                         items(day.entries) { entry ->
                             SessionCard(
