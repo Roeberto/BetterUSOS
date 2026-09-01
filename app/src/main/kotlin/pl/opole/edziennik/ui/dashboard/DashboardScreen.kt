@@ -107,8 +107,8 @@ fun DashboardScreen(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CardShape)
                         .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
+                        .border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant, CardShape)
                         .padding(horizontal = 14.dp),
                 ) {
                     if (state.payments.isEmpty()) {
