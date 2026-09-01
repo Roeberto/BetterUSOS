@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,13 +21,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.data.UsosRepository
@@ -44,11 +41,12 @@ import java.io.File
 import java.util.Locale
 
 /** Odpowiednik trasy `/dashboard` (dashboard.html) z aplikacji webowej —
- * płatności + plan na najbliższe 7 dni. Pełna strona ocen jest pod osobnym
- * przyciskiem w menu (patrz `GradesScreen`). Dane są cache'owane na dysku
- * (patrz `UsosRepository`) — przycisk "⟳" wymusza świeże pobranie; jeśli
- * ono zawiedzie, ostatnio pokazane dane zostają na ekranie razem z małym
- * banerem błędu (patrz `ErrorBanner`), zamiast znikać. */
+ * płatności + plan na najbliższe 7 dni. Nawigacja do Ocen/Planu/Wylogowania
+ * jest na pasku na dole ekranu (łatwiej trafić kciukiem niż w rozwijane
+ * menu w rogu). Dane są cache'owane na dysku (patrz `UsosRepository`) —
+ * przycisk "⟳" wymusza świeże pobranie; jeśli ono zawiedzie, ostatnio
+ * pokazane dane zostają na ekranie razem z małym banerem błędu (patrz
+ * `ErrorBanner`), zamiast znikać. */
 @Composable
 fun DashboardScreen(
     apiClient: UsosApiClient,
@@ -59,36 +57,35 @@ fun DashboardScreen(
     val repository = remember { UsosRepository(apiClient, cacheDir) }
     val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(repository))
     val state by viewModel.uiState.collectAsState()
-    var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("e-dziennik") },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳") }
-                    TextButton(onClick = { navController.navigate("notifications") }) { Text("🔔") }
-                    IconButton(onClick = { menuExpanded = true }) { Text("⋮") }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Oceny") },
-                            onClick = { menuExpanded = false; navController.navigate("grades") },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Plan") },
-                            onClick = { menuExpanded = false; navController.navigate("plan") },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Wyloguj") },
-                            onClick = {
-                                menuExpanded = false
-                                authViewModel.logout()
-                                navController.navigate("login") { popUpTo(0) }
-                            },
-                        )
-                    }
+                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
+                    TextButton(onClick = { navController.navigate("notifications") }) { Text("🔔", fontSize = 20.sp) }
                 },
             )
+        },
+        bottomBar = {
+            BottomAppBar {
+                TextButton(onClick = { navController.navigate("grades") }, modifier = Modifier.weight(1f)) {
+                    Text("Oceny")
+                }
+                TextButton(onClick = { navController.navigate("plan") }, modifier = Modifier.weight(1f)) {
+                    Text("Plan")
+                }
+                TextButton(
+                    onClick = {
+                        authViewModel.logout()
+                        navController.navigate("login") { popUpTo(0) }
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Wyloguj")
+                }
+            }
         },
     ) { padding ->
         val hasAnyData = state.payments.isNotEmpty() || state.schedule.isNotEmpty()
@@ -106,7 +103,7 @@ fun DashboardScreen(
         ) {
             item { Text("Płatności", style = MaterialTheme.typography.titleMedium) }
 
-            state.paymentsError?.let { error -> item { ErrorBanner(error) } }
+            state.paymentsError?.let { item { ErrorBanner() } }
 
             when {
                 state.payments.isEmpty() -> item {
@@ -138,7 +135,7 @@ fun DashboardScreen(
 
             item { Text("Plan zajęć — najbliższe 7 dni", style = MaterialTheme.typography.titleMedium) }
 
-            state.scheduleError?.let { error -> item { ErrorBanner(error) } }
+            state.scheduleError?.let { item { ErrorBanner() } }
 
             when {
                 state.schedule.isEmpty() -> item {

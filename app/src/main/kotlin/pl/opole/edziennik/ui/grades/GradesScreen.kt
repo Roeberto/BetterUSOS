@@ -66,10 +66,10 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
             TopAppBar(
                 title = { Text("Oceny") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳") }
+                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
                 },
             )
         },
@@ -82,7 +82,7 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
                 CircularProgressIndicator()
             }
             state.termSections.isEmpty() -> Column(Modifier.padding(padding)) {
-                state.error?.let { ErrorBanner(it, modifier = Modifier.padding(16.dp)) }
+                state.error?.let { ErrorBanner(modifier = Modifier.padding(16.dp)) }
                 Text(
                     "Brak ocen do wyświetlenia.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -94,7 +94,7 @@ fun GradesScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHos
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                state.error?.let { error -> item { ErrorBanner(error) } }
+                state.error?.let { item { ErrorBanner() } }
 
                 state.weightedAverage?.let { average ->
                     item {

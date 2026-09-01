@@ -16,11 +16,15 @@ import androidx.compose.ui.unit.sp
  * nimi. Odróżnia to od pierwszej wersji ekranów, gdzie błąd całkowicie
  * przesłaniał ostatnio pokazane (skądinąd wciąż zachowane w ViewModelu)
  * dane, np. po nieudanym wymuszonym odświeżeniu bez internetu.
+ *
+ * Celowo NIE pokazuje surowej treści błędu (np. "Unable to resolve host...")
+ * — to szczegół techniczny bez znaczenia dla użytkownika telefonu; jeśli
+ * kiedyś przyda się do debugowania, wystarczy zajrzeć do Logcata.
  */
 @Composable
-fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
+fun ErrorBanner(modifier: Modifier = Modifier) {
     Text(
-        "Nie udało się odświeżyć: $message",
+        "Nie udało się odświeżyć.",
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))

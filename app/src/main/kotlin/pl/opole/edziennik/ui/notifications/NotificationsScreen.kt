@@ -54,7 +54,7 @@ fun NotificationsScreen(cacheDir: File, navController: NavHostController) {
             TopAppBar(
                 title = { Text("Powiadomienia") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
                 },
             )
         },

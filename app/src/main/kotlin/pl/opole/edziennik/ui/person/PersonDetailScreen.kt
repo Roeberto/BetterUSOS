@@ -55,10 +55,10 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
             TopAppBar(
                 title = { Text("Osoba") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳") }
+                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
                 },
             )
         },
@@ -75,7 +75,7 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    state.error?.let { ErrorBanner(it) }
+                    state.error?.let { ErrorBanner() }
 
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         if (person.photoUrl != null) {

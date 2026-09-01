@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.data.UsosRepository
@@ -56,10 +57,10 @@ fun GroupDetailScreen(
             TopAppBar(
                 title = { Text("Grupa zajęciowa") },
                 navigationIcon = {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("←") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text("←", fontSize = 22.sp) }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳") }
+                    TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳", fontSize = 22.sp) }
                 },
             )
         },
@@ -74,7 +75,7 @@ fun GroupDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    state.error?.let { ErrorBanner(it) }
+                    state.error?.let { ErrorBanner() }
 
                     Column {
                         Text(detail.courseName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
