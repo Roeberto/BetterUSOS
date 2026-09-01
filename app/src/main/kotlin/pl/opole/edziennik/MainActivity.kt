@@ -1,11 +1,19 @@
 package pl.opole.edziennik
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.oauth.TokenStore
@@ -33,16 +41,31 @@ class MainActivity : ComponentActivity() {
     private val apiCacheDir get() = applicationContext.filesDir
 
     private val authViewModel: AuthViewModel by viewModels {
-        AuthViewModelFactory(authRepository, tokenStore, apiClient)
+        AuthViewModelFactory(authRepository, tokenStore, apiClient, applicationContext)
     }
+
+    // Ustawiane, gdy appka jest otwierana kliknięciem w powiadomienie z
+    // SyncWorkera — patrz handleIncomingIntent() i EXTRA_OPEN_NOTIFICATIONS.
+    private val openNotifications = mutableStateOf(false)
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* brak zgody = po prostu brak systemowych powiadomień, historia i tak działa */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
+        requestNotificationPermissionIfNeeded()
 
         setContent {
             EdziennikTheme {
                 val navController = rememberNavController()
+                val shouldOpenNotifications by openNotifications
+                LaunchedEffect(shouldOpenNotifications) {
+                    if (shouldOpenNotifications) {
+                        navController.navigate("notifications")
+                        openNotifications.value = false
+                    }
+                }
                 EdziennikNavHost(
                     navController = navController,
                     authViewModel = authViewModel,
@@ -59,9 +82,14 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
-    /** Przechwytuje powrót z przeglądarki po autoryzacji w USOS
-     * (patrz intent-filter w AndroidManifest.xml i Config.OAUTH_CALLBACK_URL). */
+    /** Przechwytuje powrót z przeglądarki po autoryzacji w USOS (patrz
+     * intent-filter w AndroidManifest.xml i Config.OAUTH_CALLBACK_URL) oraz
+     * kliknięcie w powiadomienie z SyncWorkera. */
     private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false) == true) {
+            openNotifications.value = true
+        }
+
         val uri: Uri = intent?.data ?: return
         if (uri.scheme == "edziennik" && uri.host == "oauth-callback") {
             val verifier = uri.getQueryParameter("oauth_verifier")
@@ -71,5 +99,19 @@ class MainActivity : ComponentActivity() {
                 authViewModel.reportLoginCancelled()
             }
         }
+    }
+
+    /** Android 13+ (API 33) wymaga zgody runtime, żeby SyncWorker mógł w
+     * ogóle pokazać powiadomienie systemowe — bez niej zdarzenia i tak
+     * trafiają do zakładki "Powiadomienia", tylko bez dźwięku/alertu. */
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    companion object {
+        const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
     }
 }

@@ -44,6 +44,14 @@ punkt startowy, nie gotowy produkt.
   sieci), ekran zostaje przy ostatnio pokazanych danych zamiast pustego
   ekranu z błędem. Cache nie ma czasu wygasania — trwa do ręcznego
   odświeżenia.
+- **Sprawdzanie w tle co 12h** (`sync/SyncWorker.kt`, WorkManager) — działa
+  niezależnie od tego, czy appka jest otwarta. Porównuje plan na najbliższe
+  14 dni i wszystkie oceny z ostatnim znanym stanem; jeśli coś się zmieniło
+  (nowe/zniknięte/przesunięte zajęcia, nowa ocena), wysyła jedno zbiorcze
+  powiadomienie systemowe i zapisuje wpis w nowej zakładce "Powiadomienia"
+  (dzwonek na pulpicie) — ta historia zostaje nawet bez zgody na
+  powiadomienia systemowe (Android 13+ pyta o nią przy pierwszym uruchomieniu).
+  Zadanie włącza się po zalogowaniu i wyłącza po wylogowaniu.
 
 ## Uruchomienie
 

@@ -11,6 +11,7 @@ import pl.opole.edziennik.ui.dashboard.DashboardScreen
 import pl.opole.edziennik.ui.grades.GradesScreen
 import pl.opole.edziennik.ui.group.GroupDetailScreen
 import pl.opole.edziennik.ui.login.LoginScreen
+import pl.opole.edziennik.ui.notifications.NotificationsScreen
 import pl.opole.edziennik.ui.person.PersonDetailScreen
 import pl.opole.edziennik.ui.plan.PlanScreen
 import pl.opole.edziennik.viewmodel.AuthViewModel
@@ -28,6 +29,7 @@ fun EdziennikNavHost(
         composable("dashboard") { DashboardScreen(apiClient, cacheDir, navController, authViewModel) }
         composable("plan") { PlanScreen(apiClient, cacheDir, navController) }
         composable("grades") { GradesScreen(apiClient, cacheDir, navController) }
+        composable("notifications") { NotificationsScreen(cacheDir, navController) }
         composable(
             "group/{unitId}/{groupNumber}",
             arguments = listOf(

@@ -56,6 +56,7 @@ fun DashboardScreen(
                 title = { Text("e-dziennik") },
                 actions = {
                     TextButton(onClick = { viewModel.refresh(forceRefresh = true) }) { Text("⟳") }
+                    TextButton(onClick = { navController.navigate("notifications") }) { Text("🔔") }
                     TextButton(onClick = { navController.navigate("grades") }) { Text("Oceny") }
                     TextButton(onClick = { navController.navigate("plan") }) { Text("Plan") }
                     TextButton(onClick = {

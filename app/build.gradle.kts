@@ -85,6 +85,9 @@ dependencies {
     // Ładowanie zdjęć osób z USOS API (grupa/osoba) — awatar z inicjałami
     // jako fallback, gdy USOS nie ma zdjęcia (patrz `formatPerson()`).
     implementation("io.coil-kt:coil-compose:2.6.0")
+    // Cykliczne sprawdzanie planu/ocen w tle, niezależnie od tego, czy
+    // appka jest otwarta (patrz sync/SyncWorker.kt).
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
