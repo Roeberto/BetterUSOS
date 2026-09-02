@@ -15,14 +15,14 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 
 ## Co jest zaimplementowane
 
-- **Ekran konfiguracji klucza USOS** (`SetupScreen`/`CredentialsStore`) —
-  appka nie ma wbudowanego na stałe klucza/sekretu konsumenta USOS (ani w
-  kodzie, ani w publikowanym APK); użytkownik wpisuje go raz, przy
-  pierwszym uruchomieniu, zapisywany trwale (DataStore). Dzięki temu
-  zbudowany APK (patrz "Pobranie gotowego APK" niżej) można bezpiecznie
-  publikować, nawet w publicznym repo. Lokalne buildy mogą pominąć ten
-  ekran, jeśli `local.properties` ma wypełniony klucz — patrz
-  "Uruchomienie z Android Studio".
+- **Zero konfiguracji dla użytkownika** — appka nigdy nie zna klucza/sekretu
+  konsumenta USOS. Wszystkie wywołania API idą przez serwer podpisujący
+  (Worker Cloudflare, patrz folder [`proxy/`](proxy/)), który dolicza podpis
+  OAuth1 po swojej stronie i trzyma sekret wyłącznie jako sekret Workera
+  (`wrangler secret put`) — nigdy w kodzie, nigdy w gicie, nigdy w żadnym
+  zbudowanym APK. Dzięki temu zarówno publiczny APK z CI, jak i lokalny
+  build, są bezpieczne do publikacji nawet w publicznym repo (zdekompilowane,
+  nie ujawniają żadnego sekretu) i działają od razu po instalacji.
 - **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
   przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
   (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
@@ -80,12 +80,20 @@ GitHubie — pobierz najnowszy z zakładki
 przy każdym commicie), albo z zakładki
 [Actions](../../actions/workflows/build-apk.yml) → wybrany run → Artifacts.
 
-Appka **nie ma wbudowanego na stałe** klucza USOS — dzięki temu ten APK
-jest bezpieczny do publikacji nawet w publicznym repo, mimo że każdy APK
-da się zdekompilować. Po instalacji appka poprosi o podanie Consumer
-Key/Secret przy pierwszym uruchomieniu (patrz "Uruchomienie z Android
-Studio" niżej po sposób na pominięcie tego ekranu przy własnych, lokalnych
-buildach).
+Appka **nigdy nie ma wbudowanego** klucza USOS (patrz `proxy/` wyżej) —
+działa od razu po instalacji, bez żadnego ekranu konfiguracji, i jest
+bezpieczna do publikacji nawet w publicznym repo, mimo że każdy APK da się
+zdekompilować.
+
+## Wdrożenie serwera podpisującego (jednorazowo)
+
+Zanim appka zadziała, ktoś musi raz wdrożyć Worker z folderu
+[`proxy/`](proxy/) na własnym (darmowym) koncie Cloudflare i wkleić jego
+adres do `Config.kt` — pełna instrukcja w
+[`proxy/README.md`](proxy/README.md). W skrócie:
+`npx wrangler login` → `npx wrangler secret put USOS_CONSUMER_KEY` (i
+`_SECRET`) → `npx wrangler deploy` → wklej wypisany adres jako
+`USOS_BASE_URL` w `Config.kt`.
 
 ## Uruchomienie z Android Studio
 
@@ -96,14 +104,6 @@ buildach).
    napraw wszystko, co czerwone — wersje zależności w `app/build.gradle.kts`
    mogą wymagać drobnej korekty w zależności od wersji Android Studio.
 3. Uruchom na emulatorze albo prawdziwym telefonie (Run ▶).
-4. Opcjonalnie: dodaj `USOS_CONSUMER_KEY`/`USOS_CONSUMER_SECRET` do
-   `local.properties` (plik zignorowany przez git) — appka zbudowana w ten
-   sposób skonfiguruje się sama, pomijając ekran ustawień. Bez tego przy
-   pierwszym uruchomieniu appka poprosi o wpisanie tych danych ręcznie —
-   te same co w `.env` aplikacji webowej (albo zarejestruj własną aplikację
-   na usosapps.po.edu.pl/developers). Zapisywane trwale na telefonie
-   (`CredentialsStore`, DataStore) — nie trzeba wpisywać przy
-   każdym uruchomieniu, tylko raz.
 
 ### Callback OAuth — jedna rzecz do sprawdzenia
 
@@ -121,16 +121,18 @@ adresów, więc jest szansa, że zadziała od razu).
 
 ```
 native_app/
+  proxy/                    — serwer podpisujący OAuth1 (Worker Cloudflare,
+                               patrz wyżej) — jedyne miejsce, gdzie istnieje
+                               klucz/sekret konsumenta USOS
   app/src/main/kotlin/pl/opole/edziennik/
-    Config.kt              — stałe (adres USOS, callback OAuth) — bez sekretów
-    MainActivity.kt         — punkt wejścia, bramka ekranu konfiguracji
-    oauth/                  — podpisywanie OAuth1, logowanie, trwały token,
-                               CredentialsStore (klucz USOS wpisany przez usera)
-    network/                — klient HTTP do USOS API
+    Config.kt              — stałe (adres Workera, adres USOS, callback
+                               OAuth) — bez sekretów
+    MainActivity.kt         — punkt wejścia
+    oauth/                  — logowanie (request/access token), trwały token
+    network/                — klient HTTP do serwera podpisującego
     data/                   — parsowanie odpowiedzi USOS (odpowiednik app.py)
     viewmodel/               — stan ekranów
-    ui/                      — ekrany Compose (setup/login/dashboard/plan/
-                               oceny/płatności/grupa/osoba/powiadomienia)
-                               + motyw
+    ui/                      — ekrany Compose (login/dashboard/plan/oceny/
+                               płatności/grupa/osoba/powiadomienia) + motyw
     sync/                    — cykliczne sprawdzanie w tle (WorkManager)
 ```

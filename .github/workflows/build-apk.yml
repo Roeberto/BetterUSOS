@@ -1,10 +1,9 @@
 name: Build APK
 
 # Buduje APK przy każdym pushu na main i wystawia go jako gotowy do pobrania
-# — bez żadnych sekretów w CI, bo appka nie ma wbudowanego na stałe klucza
-# USOS (patrz Config.kt/CredentialsStore) — użytkownik podaje go sam przy
-# pierwszym uruchomieniu, więc ten APK jest bezpieczny do publikacji nawet
-# w publicznym repo.
+# — bez żadnych sekretów w CI, bo appka nigdy nie zna klucza USOS (idzie
+# przez serwer podpisujący, patrz proxy/), więc ten APK jest bezpieczny do
+# publikacji nawet w publicznym repo i działa od razu po instalacji.
 on:
   push:
     branches: [main]
@@ -53,9 +52,8 @@ jobs:
           name: "Najnowszy build (${{ github.sha }})"
           body: |
             Automatycznie zbudowany APK z najnowszego commita na `main`
-            (${{ github.sha }}). Po instalacji appka poprosi o podanie
-            Consumer Key/Secret z usosapps.po.edu.pl/developers — patrz
-            README.
+            (${{ github.sha }}). Działa od razu po instalacji — bez żadnej
+            ręcznej konfiguracji.
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
         env:

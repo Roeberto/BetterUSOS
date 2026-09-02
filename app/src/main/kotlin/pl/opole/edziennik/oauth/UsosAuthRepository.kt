@@ -9,9 +9,15 @@ data class UsosCredentials(val accessToken: String, val accessTokenSecret: Strin
 /**
  * Odpowiednik tras `/login` i `/callback` z aplikacji webowej — trzy kroki
  * OAuth 1.0a: request token -> autoryzacja w przeglądarce -> access token.
+ *
+ * `client` woła serwer podpisujący (Worker), więc `client.baseUrl` to jego
+ * adres — ale strona autoryzacji (`oauth/authorize`) to zwykła, niepodpisywana
+ * strona HTML na PRAWDZIWYM USOS, którą trzeba otworzyć w przeglądarce, nie
+ * przez Worker — stąd osobny `webBaseUrl`.
  */
 class UsosAuthRepository(
     private val client: UsosApiClient,
+    private val webBaseUrl: String,
     private val callbackUrl: String,
     private val scopes: String,
 ) {
@@ -31,7 +37,7 @@ class UsosAuthRepository(
         requestToken = token
         requestTokenSecret = parsed["oauth_token_secret"]
 
-        return "${client.baseUrl}/services/oauth/authorize?oauth_token=${Uri.encode(token)}"
+        return "$webBaseUrl/services/oauth/authorize?oauth_token=${Uri.encode(token)}"
     }
 
     /** Krok 2: po powrocie z przeglądarki (oauth_verifier w URI) wymienia token na dostępowy. */

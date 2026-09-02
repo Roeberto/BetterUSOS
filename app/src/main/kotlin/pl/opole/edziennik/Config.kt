@@ -1,18 +1,14 @@
 package pl.opole.edziennik
 
 /**
- * USOS_CONSUMER_KEY/SECRET domyślnie są puste — appka nie ma ich wbudowanych
- * na stałe, więc skompilowany APK (np. ten budowany automatycznie w CI przy
- * każdym commicie) można bezpiecznie publikować nawet w publicznym repo:
- * zdekompilowany, nie ujawnia żadnego sekretu.
- *
- * Jeśli jednak `local.properties` (plik zignorowany przez git, CI go nie
- * ma) zawiera te wartości, trafiają tu przez `BuildConfig` — appka
- * zbudowana NA TWOIM komputerze skonfiguruje się wtedy sama przy starcie,
- * bez pokazywania ekranu ustawień (patrz `MainActivity`). Brak tych
- * wartości (tak jak w CI) po prostu pokazuje `SetupScreen` — użytkownik
- * wpisuje je ręcznie, raz, i appka zapamiętuje je trwale na telefonie
- * (`CredentialsStore`).
+ * Appka nigdy nie zna klucza/sekretu konsumenta USOS — wszystkie wywołania
+ * API idą przez serwer podpisujący (Worker Cloudflare, patrz `proxy/`),
+ * który dolicza podpis OAuth1 po swojej stronie i trzyma sekret wyłącznie
+ * jako sekret Workera (`wrangler secret put`, nigdy w kodzie ani w gicie).
+ * Dzięki temu każdy zbudowany APK — publiczny (CI) czy lokalny — jest
+ * bezpieczny do publikacji nawet w publicznym repo: zdekompilowany, nie
+ * ujawnia żadnego sekretu, i nie wymaga od użytkownika żadnej ręcznej
+ * konfiguracji.
  *
  * WAŻNE: OAUTH_CALLBACK_URL to niestandardowy schemat URI, pod który
  * przeglądarka wraca po autoryzacji w USOS (patrz intent-filter w
@@ -24,9 +20,17 @@ package pl.opole.edziennik
  * będzie ustawić raz, na sztywno.
  */
 object Config {
-    const val USOS_BASE_URL = "https://usosapps.po.edu.pl"
-    val DEFAULT_CONSUMER_KEY: String = BuildConfig.USOS_CONSUMER_KEY
-    val DEFAULT_CONSUMER_SECRET: String = BuildConfig.USOS_CONSUMER_SECRET
+    /** Adres serwera podpisującego (Worker Cloudflare) — tu idą WSZYSTKIE
+     * właściwe wywołania API USOS. Podmień na adres wypisany przez
+     * `wrangler deploy` po wdrożeniu Workera (patrz `proxy/README.md`). */
+    const val USOS_BASE_URL = "https://edziennik-usos-proxy.WSTAW-SWOJA-SUBDOMENE.workers.dev"
+
+    /** Adres prawdziwego USOS — używany WYŁĄCZNIE do zbudowania linku do
+     * strony autoryzacji logowania, otwieranej w przeglądarce (to zwykła,
+     * niepodpisywana strona HTML, nie wywołanie API, więc nie idzie przez
+     * Worker). */
+    const val USOS_WEB_BASE_URL = "https://usosapps.po.edu.pl"
+
     const val OAUTH_CALLBACK_URL = "edziennik://oauth-callback"
     const val OAUTH_SCOPES = "grades|studies|other_emails|payments|offline_access"
 }
