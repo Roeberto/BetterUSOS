@@ -41,11 +41,13 @@ import pl.opole.edziennik.data.CourseGrades
 import pl.opole.edziennik.data.DistributionBar
 import pl.opole.edziennik.data.GradeEntry
 import pl.opole.edziennik.data.UsosRepository
+import pl.opole.edziennik.data.classTypeColorKey
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.theme.CardShape
 import pl.opole.edziennik.ui.theme.PillShape
+import pl.opole.edziennik.ui.theme.colorForType
 import pl.opole.edziennik.viewmodel.GradesViewModel
 import pl.opole.edziennik.viewmodel.GradesViewModelFactory
 import java.io.File
@@ -197,12 +199,18 @@ private fun GradeEntryRow(entry: GradeEntry, repository: UsosRepository) {
             .padding(vertical = 10.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                entry.classType.replaceFirstChar { it.uppercase() },
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
+            if (entry.classType.isNotEmpty()) {
+                Text(
+                    entry.classType.replaceFirstChar { it.uppercase() },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .background(colorForType(classTypeColorKey(entry.classType)), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     entry.valueSymbol ?: "—",

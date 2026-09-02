@@ -40,6 +40,17 @@ data class ClassType(
 )
 
 /**
+ * Normalizuje dowolną nazwę formy zajęć (np. z `courses/classtypes_index` —
+ * inny słownik niż `classtype_name` z planu, ale ta sama lista form) do
+ * klucza koloru używanego przez `colorForType()`. Pozwala pokolorować formę
+ * zajęć przy ocenie tym samym kolorem, co plakietkę w planie zajęć.
+ */
+fun classTypeColorKey(rawType: String): String {
+    val key = normalize(rawType)
+    return if (labels.containsKey(key)) key else "inne"
+}
+
+/**
  * Odpowiednik `split_class_type()` z aplikacji webowej — wyodrębnia formę
  * zajęć (wykład/ćwiczenia/...) z pola `classtype_name`, a w razie jego
  * braku z końcówki `name` (np. "... - Wykład"), i usuwa ją z wyświetlanej
