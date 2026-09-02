@@ -23,7 +23,7 @@ object Config {
     /** Adres serwera podpisującego (Worker Cloudflare) — tu idą WSZYSTKIE
      * właściwe wywołania API USOS. Podmień na adres wypisany przez
      * `wrangler deploy` po wdrożeniu Workera (patrz `proxy/README.md`). */
-    const val USOS_BASE_URL = "https://edziennik-usos-proxy.WSTAW-SWOJA-SUBDOMENE.workers.dev"
+    const val USOS_BASE_URL = "https://edziennik-usos-proxy.roboga03.workers.dev"
 
     /** Adres prawdziwego USOS — używany WYŁĄCZNIE do zbudowania linku do
      * strony autoryzacji logowania, otwieranej w przeglądarce (to zwykła,
