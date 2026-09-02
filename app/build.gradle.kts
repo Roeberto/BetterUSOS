@@ -1,6 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Opcjonalna WYGODA lokalnego dewelopowania — jeśli local.properties (plik
+// zignorowany przez git, więc nigdy nie trafia do repo ani do CI) zawiera
+// USOS_CONSUMER_KEY/SECRET, appka zbudowana na TYM komputerze sama się
+// skonfiguruje przy starcie, pomijając ekran ustawień (patrz Config.kt/
+// MainActivity). CI (GitHub Actions) nie ma tego pliku, więc publiczny APK
+// z każdego commita i tak zawsze wychodzi bez wbudowanego sekretu.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -13,6 +26,15 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+
+        buildConfigField(
+            "String", "USOS_CONSUMER_KEY",
+            "\"${localProperties.getProperty("USOS_CONSUMER_KEY", "")}\"",
+        )
+        buildConfigField(
+            "String", "USOS_CONSUMER_SECRET",
+            "\"${localProperties.getProperty("USOS_CONSUMER_SECRET", "")}\"",
+        )
     }
 
     buildTypes {
@@ -36,6 +58,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

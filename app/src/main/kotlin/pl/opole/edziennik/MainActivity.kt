@@ -78,10 +78,23 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     val saved = credentialsStore.load()
-                    if (saved != null) {
-                        apiClient.setConsumerCredentials(saved.consumerKey, saved.consumerSecret)
+                    val effective = saved ?: run {
+                        // Wygoda lokalnego builda — jeśli local.properties na
+                        // TYM komputerze ma klucz USOS, appka konfiguruje się
+                        // sama, bez pokazywania SetupScreen (patrz Config.kt).
+                        // CI nie ma tego pliku, więc publiczny APK i tak
+                        // zawsze wychodzi bez wbudowanego sekretu.
+                        if (Config.DEFAULT_CONSUMER_KEY.isNotBlank() && Config.DEFAULT_CONSUMER_SECRET.isNotBlank()) {
+                            UsosConsumerCredentials(Config.DEFAULT_CONSUMER_KEY, Config.DEFAULT_CONSUMER_SECRET)
+                                .also { credentialsStore.save(it) }
+                        } else {
+                            null
+                        }
                     }
-                    credentialsReady = saved != null
+                    if (effective != null) {
+                        apiClient.setConsumerCredentials(effective.consumerKey, effective.consumerSecret)
+                    }
+                    credentialsReady = effective != null
                 }
 
                 when (credentialsReady) {

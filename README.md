@@ -15,11 +15,13 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 
 ## Co jest zaimplementowane
 
-- **Ekran konfiguracji przy pierwszym uruchomieniu** — appka nie ma
-  wbudowanego na stałe klucza/sekretu konsumenta USOS; użytkownik wpisuje
-  go raz, zapisywany trwale (`CredentialsStore`, DataStore). Dzięki temu
-  zbudowany APK (patrz "Pobranie gotowego APK" niżej) można bezpiecznie
-  publikować, nawet w publicznym repo.
+- **Ekran konfiguracji klucza USOS** (`SetupScreen`/`CredentialsStore`) —
+  appka w kodzie źródłowym nie ma wbudowanego na stałe klucza konsumenta;
+  jeśli builduje ją ktoś bez wpisanych danych w `local.properties` i bez
+  repo secrets w CI, przy pierwszym uruchomieniu appka poprosi o wpisanie
+  go ręcznie (raz, potem trwale zapamiętany). Oficjalny APK z GitHub
+  Releases (patrz niżej) ma klucz wstrzyknięty automatycznie w CI i działa
+  od razu, bez tego ekranu.
 - **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
   przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
   (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
@@ -77,10 +79,14 @@ GitHubie — pobierz najnowszy z zakładki
 przy każdym commicie), albo z zakładki
 [Actions](../../actions/workflows/build-apk.yml) → wybrany run → Artifacts.
 
-Appka **nie ma wbudowanego na stałe** klucza USOS (patrz niżej) — dzięki
-temu ten APK jest bezpieczny do publikacji nawet w publicznym repo, mimo że
-każdy APK da się zdekompilować. Po instalacji appka poprosi o podanie
-Consumer Key/Secret przy pierwszym uruchomieniu.
+**Ten APK ma wbudowany prawdziwy klucz USOS i działa od razu po instalacji**,
+bez żadnej konfiguracji — świadomy kompromis: klucz trafia do CI przez
+zaszyfrowane GitHub Actions secrets (`USOS_CONSUMER_KEY`/
+`USOS_CONSUMER_SECRET`, ustawione w Settings → Secrets and variables →
+Actions), nigdy nie trafia do kodu ani do historii gita, ale sam plik APK
+da się zdekompilować, więc ten klucz jest efektywnie publiczny. Jeśli ktoś
+zbuduje appkę ze źródeł bez tych sekretów, dostanie ekran konfiguracji
+(patrz niżej) zamiast wbudowanego klucza.
 
 ## Uruchomienie z Android Studio
 
@@ -91,10 +97,13 @@ Consumer Key/Secret przy pierwszym uruchomieniu.
    napraw wszystko, co czerwone — wersje zależności w `app/build.gradle.kts`
    mogą wymagać drobnej korekty w zależności od wersji Android Studio.
 3. Uruchom na emulatorze albo prawdziwym telefonie (Run ▶).
-4. Przy pierwszym uruchomieniu appka poprosi o Consumer Key/Secret —
-   wpisz te same dane co w `.env` aplikacji webowej (albo zarejestruj
-   własną aplikację na usosapps.po.edu.pl/developers). Zapisywane trwale
-   na telefonie (`CredentialsStore`, DataStore) — nie trzeba wpisywać przy
+4. Opcjonalnie: dodaj `USOS_CONSUMER_KEY`/`USOS_CONSUMER_SECRET` do
+   `local.properties` (plik zignorowany przez git) — appka zbudowana w ten
+   sposób skonfiguruje się sama, pomijając ekran ustawień. Bez tego przy
+   pierwszym uruchomieniu appka poprosi o wpisanie tych danych ręcznie —
+   te same co w `.env` aplikacji webowej (albo zarejestruj własną aplikację
+   na usosapps.po.edu.pl/developers). Zapisywane trwale na telefonie
+   (`CredentialsStore`, DataStore) — nie trzeba wpisywać przy
    każdym uruchomieniu, tylko raz.
 
 ### Callback OAuth — jedna rzecz do sprawdzenia
