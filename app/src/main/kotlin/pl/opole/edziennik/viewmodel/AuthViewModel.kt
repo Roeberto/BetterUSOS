@@ -41,7 +41,15 @@ class AuthViewModel(
                 apiClient.accessTokenSecret = saved.accessTokenSecret
                 _state.value = AuthState.LoggedIn
                 SyncScheduler.enqueue(appContext)
-            } else {
+            } else if (_state.value == AuthState.CheckingSession) {
+                // Warunek na _state.value == CheckingSession jest kluczowy: MainActivity
+                // wywołuje completeLogin() z onCreate() SYNCHRONICZNIE, zanim ten
+                // korutynowy load() zdąży się zakończyć (np. gdy Android ubił proces
+                // appki w tle, a użytkownik wraca z przeglądarki po autoryzacji —
+                // wtedy MainActivity/ViewModel są tworzone od nowa). Bez tej strażniczej
+                // sprawdy ten kod potrafił nadpisać już ustawiony wynik completeLogin()
+                // (LoggedIn/Error) z powrotem na LoggedOut, więc użytkownik lądował po
+                // cichu na ekranie logowania bez ŻADNEGO komunikatu o błędzie.
                 _state.value = AuthState.LoggedOut
             }
         }
@@ -52,7 +60,12 @@ class AuthViewModel(
     suspend fun startLogin(): String? = withContext(Dispatchers.IO) {
         _state.value = AuthState.LoggingIn
         try {
-            authRepository.startLogin()
+            val pending = authRepository.startLogin()
+            // Request token musi przetrwać na dysku, nie tylko w pamięci — użytkownik
+            // zaraz wyjdzie do przeglądarki, a Android może w tym czasie ubić proces
+            // appki w tle (patrz komentarz w init{}).
+            tokenStore.savePendingRequestToken(pending.requestToken, pending.requestTokenSecret)
+            pending.authorizeUrl
         } catch (e: Exception) {
             _state.value = AuthState.Error(e.message ?: "Nie udało się rozpocząć logowania.")
             null
@@ -63,8 +76,15 @@ class AuthViewModel(
     fun completeLogin(oauthVerifier: String) {
         viewModelScope.launch {
             try {
-                val credentials = withContext(Dispatchers.IO) { authRepository.completeLogin(oauthVerifier) }
-                withContext(Dispatchers.IO) { tokenStore.save(credentials) }
+                val pending = withContext(Dispatchers.IO) { tokenStore.loadPendingRequestToken() }
+                    ?: error("Brak zapisanego żądania logowania — zacznij od nowa.")
+                val credentials = withContext(Dispatchers.IO) {
+                    authRepository.completeLogin(oauthVerifier, pending.token, pending.secret)
+                }
+                withContext(Dispatchers.IO) {
+                    tokenStore.save(credentials)
+                    tokenStore.clearPendingRequestToken()
+                }
                 _state.value = AuthState.LoggedIn
                 SyncScheduler.enqueue(appContext)
             } catch (e: Exception) {

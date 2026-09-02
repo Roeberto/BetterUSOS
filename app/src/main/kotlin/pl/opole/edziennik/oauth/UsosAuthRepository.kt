@@ -6,6 +6,12 @@ import java.net.URLDecoder
 
 data class UsosCredentials(val accessToken: String, val accessTokenSecret: String)
 
+/** Krok 1 zwraca zarówno adres do otwarcia w przeglądarce, jak i request
+ * token/secret — wywołujący musi je utrwalić (patrz TokenStore), bo
+ * przeglądarka to osobna aktywność/zadanie i Android może w międzyczasie
+ * ubić proces appki w tle, zanim użytkownik wróci z autoryzacji. */
+data class PendingLogin(val authorizeUrl: String, val requestToken: String, val requestTokenSecret: String)
+
 /**
  * Odpowiednik tras `/login` i `/callback` z aplikacji webowej — trzy kroki
  * OAuth 1.0a: request token -> autoryzacja w przeglądarce -> access token.
@@ -14,6 +20,9 @@ data class UsosCredentials(val accessToken: String, val accessTokenSecret: Strin
  * adres — ale strona autoryzacji (`oauth/authorize`) to zwykła, niepodpisywana
  * strona HTML na PRAWDZIWYM USOS, którą trzeba otworzyć w przeglądarce, nie
  * przez Worker — stąd osobny `webBaseUrl`.
+ *
+ * UWAGA: celowo bezstanowy (request token nie jest polem instancji) — patrz
+ * PendingLogin i AuthViewModel, które utrwalają go między krokami 1 i 2.
  */
 class UsosAuthRepository(
     private val client: UsosApiClient,
@@ -21,11 +30,8 @@ class UsosAuthRepository(
     private val callbackUrl: String,
     private val scopes: String,
 ) {
-    private var requestToken: String? = null
-    private var requestTokenSecret: String? = null
-
     /** Krok 1: pobiera request token i zwraca adres do otwarcia w przeglądarce. */
-    fun startLogin(): String {
+    fun startLogin(): PendingLogin {
         val resp = client.post(
             "oauth/request_token",
             params = mapOf("oauth_callback" to callbackUrl, "scopes" to scopes),
@@ -34,17 +40,15 @@ class UsosAuthRepository(
 
         val parsed = parseFormEncoded(resp.body)
         val token = parsed["oauth_token"] ?: error("USOS nie zwrócił oauth_token (request token).")
-        requestToken = token
-        requestTokenSecret = parsed["oauth_token_secret"]
+        val secret = parsed["oauth_token_secret"] ?: error("USOS nie zwrócił oauth_token_secret (request token).")
 
-        return "$webBaseUrl/services/oauth/authorize?oauth_token=${Uri.encode(token)}"
+        val authorizeUrl = "$webBaseUrl/services/oauth/authorize?oauth_token=${Uri.encode(token)}"
+        return PendingLogin(authorizeUrl, token, secret)
     }
 
-    /** Krok 2: po powrocie z przeglądarki (oauth_verifier w URI) wymienia token na dostępowy. */
-    fun completeLogin(oauthVerifier: String): UsosCredentials {
-        val token = requestToken ?: error("Brak request tokena — zacznij logowanie od nowa.")
-        val secret = requestTokenSecret ?: error("Brak request token secret — zacznij logowanie od nowa.")
-
+    /** Krok 2: po powrocie z przeglądarki (oauth_verifier w URI) wymienia token na dostępowy.
+     * `token`/`secret` to request token z kroku 1, odczytany przez wywołującego z trwałego magazynu. */
+    fun completeLogin(oauthVerifier: String, token: String, secret: String): UsosCredentials {
         client.accessToken = token
         client.accessTokenSecret = secret
 
