@@ -1,14 +1,10 @@
 name: Build APK
 
-# Buduje APK przy każdym pushu na main i wystawia go jako gotowy do pobrania.
-#
-# UWAGA: ten build wstrzykuje prawdziwy klucz/sekret konsumenta USOS (z
-# repo secrets — NIGDY nie trafiają do kodu ani do historii gita), żeby
-# appka działała od razu po instalacji, bez ręcznego wpisywania klucza
-# przez każdego, kto pobierze ten publiczny APK. To świadomy kompromis: kod
-# APK da się zdekompilować, więc ten klucz jest efektywnie publiczny.
-# Wymaga ustawienia w Settings → Secrets and variables → Actions:
-# USOS_CONSUMER_KEY, USOS_CONSUMER_SECRET.
+# Buduje APK przy każdym pushu na main i wystawia go jako gotowy do pobrania
+# — bez żadnych sekretów w CI, bo appka nie ma wbudowanego na stałe klucza
+# USOS (patrz Config.kt/CredentialsStore) — użytkownik podaje go sam przy
+# pierwszym uruchomieniu, więc ten APK jest bezpieczny do publikacji nawet
+# w publicznym repo.
 on:
   push:
     branches: [main]
@@ -36,11 +32,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Write local.properties with USOS consumer credentials
-        run: |
-          echo "USOS_CONSUMER_KEY=${{ secrets.USOS_CONSUMER_KEY }}" >> local.properties
-          echo "USOS_CONSUMER_SECRET=${{ secrets.USOS_CONSUMER_SECRET }}" >> local.properties
-
       - name: Build debug APK
         run: ./gradlew assembleDebug --console=plain
 
@@ -62,8 +53,9 @@ jobs:
           name: "Najnowszy build (${{ github.sha }})"
           body: |
             Automatycznie zbudowany APK z najnowszego commita na `main`
-            (${{ github.sha }}) — gotowy do instalacji, bez dodatkowej
-            konfiguracji.
+            (${{ github.sha }}). Po instalacji appka poprosi o podanie
+            Consumer Key/Secret z usosapps.po.edu.pl/developers — patrz
+            README.
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
         env:

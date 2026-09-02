@@ -16,12 +16,13 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 ## Co jest zaimplementowane
 
 - **Ekran konfiguracji klucza USOS** (`SetupScreen`/`CredentialsStore`) —
-  appka w kodzie źródłowym nie ma wbudowanego na stałe klucza konsumenta;
-  jeśli builduje ją ktoś bez wpisanych danych w `local.properties` i bez
-  repo secrets w CI, przy pierwszym uruchomieniu appka poprosi o wpisanie
-  go ręcznie (raz, potem trwale zapamiętany). Oficjalny APK z GitHub
-  Releases (patrz niżej) ma klucz wstrzyknięty automatycznie w CI i działa
-  od razu, bez tego ekranu.
+  appka nie ma wbudowanego na stałe klucza/sekretu konsumenta USOS (ani w
+  kodzie, ani w publikowanym APK); użytkownik wpisuje go raz, przy
+  pierwszym uruchomieniu, zapisywany trwale (DataStore). Dzięki temu
+  zbudowany APK (patrz "Pobranie gotowego APK" niżej) można bezpiecznie
+  publikować, nawet w publicznym repo. Lokalne buildy mogą pominąć ten
+  ekran, jeśli `local.properties` ma wypełniony klucz — patrz
+  "Uruchomienie z Android Studio".
 - **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
   przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
   (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
@@ -79,14 +80,12 @@ GitHubie — pobierz najnowszy z zakładki
 przy każdym commicie), albo z zakładki
 [Actions](../../actions/workflows/build-apk.yml) → wybrany run → Artifacts.
 
-**Ten APK ma wbudowany prawdziwy klucz USOS i działa od razu po instalacji**,
-bez żadnej konfiguracji — świadomy kompromis: klucz trafia do CI przez
-zaszyfrowane GitHub Actions secrets (`USOS_CONSUMER_KEY`/
-`USOS_CONSUMER_SECRET`, ustawione w Settings → Secrets and variables →
-Actions), nigdy nie trafia do kodu ani do historii gita, ale sam plik APK
-da się zdekompilować, więc ten klucz jest efektywnie publiczny. Jeśli ktoś
-zbuduje appkę ze źródeł bez tych sekretów, dostanie ekran konfiguracji
-(patrz niżej) zamiast wbudowanego klucza.
+Appka **nie ma wbudowanego na stałe** klucza USOS — dzięki temu ten APK
+jest bezpieczny do publikacji nawet w publicznym repo, mimo że każdy APK
+da się zdekompilować. Po instalacji appka poprosi o podanie Consumer
+Key/Secret przy pierwszym uruchomieniu (patrz "Uruchomienie z Android
+Studio" niżej po sposób na pominięcie tego ekranu przy własnych, lokalnych
+buildach).
 
 ## Uruchomienie z Android Studio
 
