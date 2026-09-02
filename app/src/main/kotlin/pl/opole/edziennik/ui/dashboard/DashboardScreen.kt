@@ -1,26 +1,21 @@
 package pl.opole.edziennik.ui.dashboard
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,19 +34,17 @@ import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.SessionCard
 import pl.opole.edziennik.ui.components.sessionCardClickHandler
-import pl.opole.edziennik.ui.theme.CardShape
 import pl.opole.edziennik.viewmodel.AuthViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModelFactory
 import java.io.File
-import java.util.Locale
 
 /** Odpowiednik trasy `/dashboard` (dashboard.html) z aplikacji webowej —
- * płatności + plan na najbliższe 7 dni. Nawigacja do Ocen/Planu/Wylogowania
- * jest na pasku na dole ekranu. Dane są cache'owane na dysku (patrz
- * `UsosRepository`) — przycisk odświeżania wymusza świeże pobranie; jeśli
- * ono zawiedzie, ostatnio pokazane dane zostają na ekranie razem z małym
- * banerem błędu (patrz `ErrorBanner`), zamiast znikać. */
+ * plan na najbliższe 7 dni. Płatności/Oceny/Plan/Wyloguj mają własne
+ * zakładki dostępne z paska na dole ekranu. Dane są cache'owane na dysku
+ * (patrz `UsosRepository`) — przycisk odświeżania wymusza świeże pobranie;
+ * jeśli ono zawiedzie, ostatnio pokazane dane zostają na ekranie razem z
+ * małym banerem błędu (patrz `ErrorBanner`), zamiast znikać. */
 @Composable
 fun DashboardScreen(
     apiClient: UsosApiClient,
@@ -77,6 +70,9 @@ fun DashboardScreen(
         },
         bottomBar = {
             BottomAppBar {
+                BottomNavItem(R.drawable.ic_payments, "Płatności", Modifier.weight(1f)) {
+                    navController.navigate("payments")
+                }
                 BottomNavItem(R.drawable.ic_grades, "Oceny", Modifier.weight(1f)) { navController.navigate("grades") }
                 BottomNavItem(R.drawable.ic_calendar, "Plan", Modifier.weight(1f)) { navController.navigate("plan") }
                 BottomNavItem(R.drawable.ic_logout, "Wyloguj", Modifier.weight(1f)) {
@@ -86,8 +82,7 @@ fun DashboardScreen(
             }
         },
     ) { padding ->
-        val hasAnyData = state.payments.isNotEmpty() || state.schedule.isNotEmpty()
-        if (state.isLoading && !hasAnyData) {
+        if (state.isLoading && state.schedule.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -99,65 +94,7 @@ fun DashboardScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { Text("Płatności", style = MaterialTheme.typography.titleMedium) }
-
-            state.paymentsError?.let { item { ErrorBanner() } }
-
-            item {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
-                        .border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant, CardShape)
-                        .padding(horizontal = 14.dp),
-                ) {
-                    if (state.payments.isEmpty()) {
-                        Text(
-                            "Brak zaległych płatności.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 14.dp),
-                        )
-                    } else {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp, bottom = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text("Do zapłaty łącznie", fontWeight = FontWeight.Bold)
-                            Text(
-                                "${amount(state.paymentsTotal)} ${state.payments.first().currency}",
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(2.dp)
-                                .background(MaterialTheme.colorScheme.onSurface),
-                        )
-                        state.payments.forEachIndexed { index, payment ->
-                            Column(Modifier.fillMaxWidth().padding(vertical = 11.dp)) {
-                                Text(payment.typeLabel + (payment.description?.let { " — $it" } ?: ""))
-                                payment.paymentDeadline?.let {
-                                    Text("termin: $it", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Text("${amount(payment.amount)} ${payment.currency}", fontWeight = FontWeight.SemiBold)
-                            }
-                            if (index != state.payments.lastIndex) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            item { Text("Plan zajęć — najbliższe 7 dni", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp)) }
+            item { Text("Plan zajęć — najbliższe 7 dni", style = MaterialTheme.typography.titleMedium) }
 
             state.scheduleError?.let { item { ErrorBanner() } }
 
@@ -195,5 +132,3 @@ private fun BottomNavItem(iconRes: Int, label: String, modifier: Modifier = Modi
         }
     }
 }
-
-private fun amount(value: Double): String = String.format(Locale.US, "%.2f", value)

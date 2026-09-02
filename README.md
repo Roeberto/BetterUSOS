@@ -18,8 +18,11 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 - **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
   przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
   (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
-- **Pulpit** — sekcja płatności (z tą samą logiką filtrowania po `state`,
-  którą ustaliliśmy na żywych danych) i plan zajęć na najbliższe 7 dni.
+- **Pulpit** — plan zajęć na najbliższe 7 dni; pasek na dole z zakładkami
+  Płatności/Oceny/Plan/Wyloguj.
+- **Płatności** (osobna zakładka) — lista należności z tą samą logiką
+  filtrowania po `state`, którą ustaliliśmy na żywych danych (`saldo_amount`
+  nie oznacza "do zapłaty" — patrz `fetchOutstandingPayments()`).
 - **Plan miesięczny** — przełącznik roku akademickiego + zakładki miesięcy,
   te same kolorowe karty zajęć co w wersji webowej, klikalne do strony grupy.
 - **Strona ocen** (`/oceny`) — oceny pogrupowane po semestrze i przedmiocie,

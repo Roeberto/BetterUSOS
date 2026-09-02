@@ -7,16 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import pl.opole.edziennik.data.DayGroup
-import pl.opole.edziennik.data.Payment
 import pl.opole.edziennik.data.UsosRepository
 import java.time.LocalDate
 
-/** Odpowiednik trasy `/dashboard` z aplikacji webowej. */
+/** Odpowiednik trasy `/dashboard` z aplikacji webowej — sam plan na
+ * najbliższe 7 dni. Płatności mają teraz własną zakładkę (patrz
+ * `PaymentsViewModel`/`PaymentsScreen`). */
 data class DashboardUiState(
     val isLoading: Boolean = true,
-    val payments: List<Payment> = emptyList(),
-    val paymentsTotal: Double = 0.0,
-    val paymentsError: String? = null,
     val schedule: List<DayGroup> = emptyList(),
     val scheduleError: String? = null,
 )
@@ -41,15 +39,11 @@ class DashboardViewModel(private val repository: UsosRepository) : ViewModel() {
             val current = _uiState.value
             _uiState.value = current.copy(isLoading = true)
 
-            val paymentsResult = repository.fetchOutstandingPayments(forceRefresh)
             val today = LocalDate.now()
             val scheduleResult = repository.fetchSchedule(today, today.plusDays(6), forceRefresh)
 
             _uiState.value = current.copy(
                 isLoading = false,
-                payments = paymentsResult.getOrNull()?.first ?: current.payments,
-                paymentsTotal = paymentsResult.getOrNull()?.second ?: current.paymentsTotal,
-                paymentsError = paymentsResult.exceptionOrNull()?.message,
                 schedule = scheduleResult.getOrNull() ?: current.schedule,
                 scheduleError = scheduleResult.exceptionOrNull()?.message,
             )
