@@ -23,16 +23,27 @@ data class UsosResponse(val isSuccessful: Boolean, val body: String)
  * kliknięciu w "Oceny" bez internetu — `fetchEctsPoints()` nie miało
  * własnego try/catch, a wyjątek z tego miejsca lądował bezpośrednio w
  * korutynie ViewModelu, zabijając cały proces).
+ *
+ * Klucz/sekret konsumenta USOS NIE są wbudowane na stałe (ani w kodzie, ani
+ * w BuildConfig) — użytkownik wpisuje je sam przy pierwszym uruchomieniu
+ * (patrz `SetupScreen`/`CredentialsStore`), dzięki czemu zbudowany plik APK
+ * można bezpiecznie publikować (np. automatycznie w CI) bez ujawniania
+ * sekretu każdemu, kto go zdekompiluje.
  */
-class UsosApiClient(
-    val baseUrl: String,
-    private val consumerKey: String,
-    private val consumerSecret: String,
-) {
+class UsosApiClient(val baseUrl: String) {
     private val client = OkHttpClient()
 
     var accessToken: String? = null
     var accessTokenSecret: String? = null
+    private var consumerKey: String = ""
+    private var consumerSecret: String = ""
+
+    fun setConsumerCredentials(key: String, secret: String) {
+        consumerKey = key
+        consumerSecret = secret
+    }
+
+    fun hasConsumerCredentials(): Boolean = consumerKey.isNotEmpty() && consumerSecret.isNotEmpty()
 
     fun get(method: String, params: Map<String, String> = emptyMap()): UsosResponse {
         val url = "$baseUrl/services/$method"

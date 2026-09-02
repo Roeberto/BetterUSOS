@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import pl.opole.edziennik.Config
 import pl.opole.edziennik.MainActivity
+import pl.opole.edziennik.oauth.CredentialsStore
 import pl.opole.edziennik.R
 import pl.opole.edziennik.data.NotificationEvent
 import pl.opole.edziennik.data.NotificationHistoryStore
@@ -41,8 +42,11 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val credentials = TokenStore(applicationContext).load()
             ?: return@withContext Result.success() // nikt nie jest zalogowany — nic do zrobienia
+        val consumerCredentials = CredentialsStore(applicationContext).load()
+            ?: return@withContext Result.success() // klucz USOS jeszcze nie skonfigurowany — nic do zrobienia
 
-        val apiClient = UsosApiClient(Config.USOS_BASE_URL, Config.USOS_CONSUMER_KEY, Config.USOS_CONSUMER_SECRET)
+        val apiClient = UsosApiClient(Config.USOS_BASE_URL)
+        apiClient.setConsumerCredentials(consumerCredentials.consumerKey, consumerCredentials.consumerSecret)
         apiClient.accessToken = credentials.accessToken
         apiClient.accessTokenSecret = credentials.accessTokenSecret
 

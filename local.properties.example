@@ -1,9 +1,0 @@
-# Skopiuj do local.properties (Android Studio doda tam też sdk.dir przy
-# pierwszym otwarciu projektu) i uzupełnij prawdziwymi wartościami.
-# Ten plik (local.properties) jest zignorowany przez git — nigdy nie trafi
-# do repozytorium.
-
-# Dane uzyskane po rejestracji aplikacji na:
-# https://usosapps.po.edu.pl/developers/
-USOS_CONSUMER_KEY=twoj_consumer_key
-USOS_CONSUMER_SECRET=twoj_consumer_secret

@@ -1,17 +1,6 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-}
-
-// Dane USOS Consumer Key/Secret NIE trafiają do kodu ani do repozytorium —
-// czytamy je z local.properties (zignorowane przez git, patrz .gitignore),
-// tak jak sdk.dir. Uzupełnij je tam analogicznie do .env aplikacji webowej
-// (patrz README).
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -24,15 +13,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
-
-        buildConfigField(
-            "String", "USOS_CONSUMER_KEY",
-            "\"${localProperties.getProperty("USOS_CONSUMER_KEY", "")}\"",
-        )
-        buildConfigField(
-            "String", "USOS_CONSUMER_SECRET",
-            "\"${localProperties.getProperty("USOS_CONSUMER_SECRET", "")}\"",
-        )
     }
 
     buildTypes {
@@ -56,7 +36,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     composeOptions {

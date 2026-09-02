@@ -10,28 +10,39 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import pl.opole.edziennik.network.UsosApiClient
+import pl.opole.edziennik.oauth.CredentialsStore
 import pl.opole.edziennik.oauth.TokenStore
 import pl.opole.edziennik.oauth.UsosAuthRepository
+import pl.opole.edziennik.oauth.UsosConsumerCredentials
 import pl.opole.edziennik.ui.EdziennikNavHost
+import pl.opole.edziennik.ui.setup.SetupScreen
 import pl.opole.edziennik.ui.theme.EdziennikTheme
 import pl.opole.edziennik.viewmodel.AuthViewModel
 import pl.opole.edziennik.viewmodel.AuthViewModelFactory
 
 class MainActivity : ComponentActivity() {
 
-    private val apiClient by lazy {
-        UsosApiClient(Config.USOS_BASE_URL, Config.USOS_CONSUMER_KEY, Config.USOS_CONSUMER_SECRET)
-    }
+    private val apiClient by lazy { UsosApiClient(Config.USOS_BASE_URL) }
     private val authRepository by lazy {
         UsosAuthRepository(apiClient, Config.OAUTH_CALLBACK_URL, Config.OAUTH_SCOPES)
     }
     private val tokenStore by lazy { TokenStore(applicationContext) }
+    private val credentialsStore by lazy { CredentialsStore(applicationContext) }
 
     // Trwały cache odpowiedzi USOS API (patrz DiskCache) — jeden katalog na
     // całą appkę, przekazywany w dół przez EdziennikNavHost do każdego
@@ -58,20 +69,47 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EdziennikTheme {
-                val navController = rememberNavController()
-                val shouldOpenNotifications by openNotifications
-                LaunchedEffect(shouldOpenNotifications) {
-                    if (shouldOpenNotifications) {
-                        navController.navigate("notifications")
-                        openNotifications.value = false
+                // Appka nie ma wbudowanego na stałe klucza/sekretu konsumenta
+                // USOS (patrz Config.kt) — dopóki użytkownik ich nie poda na
+                // SetupScreen, cała reszta appki (łącznie z logowaniem) jest
+                // niedostępna.
+                var credentialsReady by remember { mutableStateOf<Boolean?>(null) }
+                val scope = rememberCoroutineScope()
+
+                LaunchedEffect(Unit) {
+                    val saved = credentialsStore.load()
+                    if (saved != null) {
+                        apiClient.setConsumerCredentials(saved.consumerKey, saved.consumerSecret)
+                    }
+                    credentialsReady = saved != null
+                }
+
+                when (credentialsReady) {
+                    null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                    false -> SetupScreen { key, secret ->
+                        apiClient.setConsumerCredentials(key, secret)
+                        scope.launch { credentialsStore.save(UsosConsumerCredentials(key, secret)) }
+                        credentialsReady = true
+                    }
+                    true -> {
+                        val navController = rememberNavController()
+                        val shouldOpenNotifications by openNotifications
+                        LaunchedEffect(shouldOpenNotifications) {
+                            if (shouldOpenNotifications) {
+                                navController.navigate("notifications")
+                                openNotifications.value = false
+                            }
+                        }
+                        EdziennikNavHost(
+                            navController = navController,
+                            authViewModel = authViewModel,
+                            apiClient = apiClient,
+                            cacheDir = apiCacheDir,
+                        )
                     }
                 }
-                EdziennikNavHost(
-                    navController = navController,
-                    authViewModel = authViewModel,
-                    apiClient = apiClient,
-                    cacheDir = apiCacheDir,
-                )
             }
         }
     }

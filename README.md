@@ -15,6 +15,11 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
 
 ## Co jest zaimplementowane
 
+- **Ekran konfiguracji przy pierwszym uruchomieniu** — appka nie ma
+  wbudowanego na stałe klucza/sekretu konsumenta USOS; użytkownik wpisuje
+  go raz, zapisywany trwale (`CredentialsStore`, DataStore). Dzięki temu
+  zbudowany APK (patrz "Pobranie gotowego APK" niżej) można bezpiecznie
+  publikować, nawet w publicznym repo.
 - **Logowanie przez USOS (OAuth 1.0a)** — request token → autoryzacja w
   przeglądarce → powrót do aplikacji przez niestandardowy schemat URI
   (`edziennik://oauth-callback`) → access token zapisany trwale (DataStore).
@@ -64,20 +69,33 @@ ujawnić przypadki brzegowe, których nie przewidzieliśmy.
   powiadomienia systemowe (Android 13+ pyta o nią przy pierwszym uruchomieniu).
   Zadanie włącza się po zalogowaniu i wyłącza po wylogowaniu.
 
-## Uruchomienie
+## Pobranie gotowego APK
+
+Każdy push na `main` automatycznie buduje APK i wystawia go jako release na
+GitHubie — pobierz najnowszy z zakładki
+[Releases](../../releases/tag/latest-build) (tag `latest-build`, nadpisywany
+przy każdym commicie), albo z zakładki
+[Actions](../../actions/workflows/build-apk.yml) → wybrany run → Artifacts.
+
+Appka **nie ma wbudowanego na stałe** klucza USOS (patrz niżej) — dzięki
+temu ten APK jest bezpieczny do publikacji nawet w publicznym repo, mimo że
+każdy APK da się zdekompilować. Po instalacji appka poprosi o podanie
+Consumer Key/Secret przy pierwszym uruchomieniu.
+
+## Uruchomienie z Android Studio
 
 1. Otwórz folder `native_app/` w Android Studio (Open → wybierz ten
    folder). Android Studio powinno samo zaproponować dogenerowanie
    Gradle Wrappera, jeśli go zabraknie.
-2. Skopiuj `local.properties.example` do `local.properties` (ten drugi jest
-   zignorowany przez git) i uzupełnij `USOS_CONSUMER_KEY`/
-   `USOS_CONSUMER_SECRET` tymi samymi danymi co w `.env` aplikacji webowej —
-   Gradle wstrzykuje je do `BuildConfig`, `Config.kt` czyta je stamtąd, więc
-   nigdy nie trafiają do kodu ani do repozytorium.
-3. Zsynchronizuj Gradle (Android Studio zrobi to samo po otwarciu) i
+2. Zsynchronizuj Gradle (Android Studio zrobi to samo po otwarciu) i
    napraw wszystko, co czerwone — wersje zależności w `app/build.gradle.kts`
    mogą wymagać drobnej korekty w zależności od wersji Android Studio.
-4. Uruchom na emulatorze albo prawdziwym telefonie (Run ▶).
+3. Uruchom na emulatorze albo prawdziwym telefonie (Run ▶).
+4. Przy pierwszym uruchomieniu appka poprosi o Consumer Key/Secret —
+   wpisz te same dane co w `.env` aplikacji webowej (albo zarejestruj
+   własną aplikację na usosapps.po.edu.pl/developers). Zapisywane trwale
+   na telefonie (`CredentialsStore`, DataStore) — nie trzeba wpisywać przy
+   każdym uruchomieniu, tylko raz.
 
 ### Callback OAuth — jedna rzecz do sprawdzenia
 
@@ -96,12 +114,15 @@ adresów, więc jest szansa, że zadziała od razu).
 ```
 native_app/
   app/src/main/kotlin/pl/opole/edziennik/
-    Config.kt              — dane konsumenta USOS (uzupełnij!)
-    MainActivity.kt         — punkt wejścia, obsługa powrotu z przeglądarki
-    oauth/                  — podpisywanie OAuth1, logowanie, trwały token
+    Config.kt              — stałe (adres USOS, callback OAuth) — bez sekretów
+    MainActivity.kt         — punkt wejścia, bramka ekranu konfiguracji
+    oauth/                  — podpisywanie OAuth1, logowanie, trwały token,
+                               CredentialsStore (klucz USOS wpisany przez usera)
     network/                — klient HTTP do USOS API
     data/                   — parsowanie odpowiedzi USOS (odpowiednik app.py)
     viewmodel/               — stan ekranów
-    ui/                      — ekrany Compose (login/dashboard/plan/oceny/
-                                grupa/osoba) + motyw
+    ui/                      — ekrany Compose (setup/login/dashboard/plan/
+                               oceny/płatności/grupa/osoba/powiadomienia)
+                               + motyw
+    sync/                    — cykliczne sprawdzanie w tle (WorkManager)
 ```
