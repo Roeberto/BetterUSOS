@@ -56,14 +56,18 @@ fun EdziennikTheme(
 ) {
     val colors = if (darkTheme) DarkColors else LightColors
 
-    // Pasek stanu (godzina/bateria) w kolorze tła appki, zamiast domyślnego
-    // czarnego/białego paska systemowego, który wybijał się z reszty ekranu.
+    // Paski systemowe (góra: godzina/bateria; dół: obszar nawigacji /
+    // paska gestów) w kolorze tła appki, zamiast domyślnego czarnego/
+    // białego, który wybijał się z reszty ekranu.
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colors.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.navigationBarColor = colors.background.toArgb()
+            val insets = WindowCompat.getInsetsController(window, view)
+            insets.isAppearanceLightStatusBars = !darkTheme
+            insets.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

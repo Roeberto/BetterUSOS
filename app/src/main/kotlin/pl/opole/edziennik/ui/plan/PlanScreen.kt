@@ -19,7 +19,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -103,19 +103,23 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
             ) {
                 items(months) { month ->
                     val isSelected = month == state.yearMonth
-                    val background = if (isSelected) {
-                        Modifier.background(MaterialTheme.colorScheme.surfaceContainer, PillShape)
-                    } else {
-                        Modifier
-                    }
-                    TextButton(onClick = { viewModel.load(month) }, modifier = background) {
-                        Text(
-                            text = month.month.getDisplayName(TextStyle.SHORT, Locale("pl"))
-                                .replaceFirstChar { it.uppercase() },
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    }
+                    Text(
+                        text = month.month.getDisplayName(TextStyle.SHORT, Locale("pl"))
+                            .replaceFirstChar { it.uppercase() },
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .then(
+                                if (isSelected) {
+                                    Modifier.background(MaterialTheme.colorScheme.surfaceContainer, PillShape)
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .clickable { viewModel.load(month) }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
                 }
             }
 
@@ -191,15 +195,26 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
 @Composable
 private fun YearSwitcher(startYear: Int, onSelectYear: (Int) -> Unit) {
     androidx.compose.foundation.layout.Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = { onSelectYear(startYear - 1) }) {
-            Text("${startYear - 1}/${startYear}")
-        }
+        Text(
+            "${startYear - 1}/${startYear}",
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(PillShape)
+                .clickable { onSelectYear(startYear - 1) }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
         Text("$startYear/${startYear + 1}", fontWeight = FontWeight.Bold)
-        TextButton(onClick = { onSelectYear(startYear + 1) }) {
-            Text("${startYear + 1}/${startYear + 2}")
-        }
+        Text(
+            "${startYear + 1}/${startYear + 2}",
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(PillShape)
+                .clickable { onSelectYear(startYear + 1) }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
