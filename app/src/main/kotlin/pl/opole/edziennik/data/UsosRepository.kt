@@ -17,6 +17,10 @@ data class Payment(
     val amount: Double,
     val currency: String,
     val paymentDeadline: String?,
+    val accountNumber: String?,
+    /** `id` pola `state` z USOS ("paid", "unpaid", ...) — po tym rozdzielamy
+     * zakładki "nierozliczone" / "rozliczone". */
+    val state: String?,
 )
 
 data class DistributionBar(val symbol: String, val percent: Double)
@@ -174,27 +178,31 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
         }
 
     /**
-     * Odpowiednik `fetch_outstanding_payments()` z app.py.
+     * Odpowiednik `fetch_outstanding_payments()` z app.py — ale zwraca
+     * WSZYSTKIE płatności (z polem `state`), a nie tylko nierozliczone;
+     * podział na zakładki "nierozliczone" / "rozliczone" robi warstwa UI.
      *
      * UWAGA: `saldo_amount` NIE oznacza "ile zostało do zapłaty" — na
-     * realnych danych okazało się, że dla płatności ze `state == "paid"`
-     * `saldo_amount` jest równe `total_amount` (to po prostu kwota tej
-     * płatności, nie pozostały dług). Właściwym kryterium jest pole
-     * `state` — pomijamy wszystko z `state == "paid"`.
+     * realnych danych dla płatności ze `state == "paid"` `saldo_amount` jest
+     * równe `total_amount` (to po prostu kwota tej płatności, nie pozostały
+     * dług). Właściwym kryterium "czy zapłacone" jest pole `state`.
+     *
+     * Drugi element pary to suma tylko NIEROZLICZONYCH należności
+     * (`state != "paid"`) — "do zapłaty łącznie".
      */
-    suspend fun fetchOutstandingPayments(forceRefresh: Boolean = false): Result<Pair<List<Payment>, Double>> =
+    suspend fun fetchPayments(forceRefresh: Boolean = false): Result<Pair<List<Payment>, Double>> =
         withContext(Dispatchers.IO) {
             try {
                 val resp = get(
                     "payments/user_payments",
-                    mapOf("fields" to "type|description|saldo_amount|total_amount|state|currency|payment_deadline"),
+                    mapOf("fields" to "type|description|saldo_amount|total_amount|state|currency|payment_deadline|account_number"),
                     forceRefresh,
                 )
                 if (!resp.isSuccessful) return@withContext Result.failure(Exception(resp.body))
 
                 val arr = JSONArray(resp.body)
                 val payments = mutableListOf<Payment>()
-                var total = 0.0
+                var outstandingTotal = 0.0
 
                 for (i in 0 until arr.length()) {
                     val p = arr.getJSONObject(i)
@@ -215,7 +223,19 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
 
                     val rawState = p.opt("state")
                     val state = if (rawState is JSONObject) rawState.optStringOrNull("id") else rawState?.toString()
-                    if (state == "paid") continue
+
+                    // `currency` też bywa obiektem ({"id": "PLN", "name": {...}}),
+                    // a nie stringiem — `optString` zrobiłby z tego cały JSON na
+                    // ekranie. Ten sam rozbiór, co po stronie webowej.
+                    val rawCurrency = p.opt("currency")
+                    val currency = if (rawCurrency is JSONObject) {
+                        rawCurrency.optStringOrNull("code")
+                            ?: rawCurrency.optStringOrNull("id")
+                            ?: plText(rawCurrency).ifEmpty { null }
+                            ?: "PLN"
+                    } else {
+                        rawCurrency?.toString()?.ifEmpty { null } ?: "PLN"
+                    }
 
                     val saldo = p.optDouble("saldo_amount", Double.NaN)
                     val totalAmount = p.optDouble("total_amount", Double.NaN)
@@ -224,21 +244,23 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                         !totalAmount.isNaN() -> totalAmount
                         else -> continue
                     }
-                    total += amount
+                    if (state != "paid") outstandingTotal += amount
 
                     payments.add(
                         Payment(
                             typeLabel = typeLabel,
                             description = plText(p.opt("description")).ifEmpty { null },
                             amount = amount,
-                            currency = p.optString("currency", "PLN"),
+                            currency = currency,
                             paymentDeadline = p.optStringOrNull("payment_deadline"),
+                            accountNumber = p.optStringOrNull("account_number"),
+                            state = state,
                         )
                     )
                 }
 
                 payments.sortBy { it.paymentDeadline ?: "" }
-                Result.success(payments to total)
+                Result.success(payments to outstandingTotal)
             } catch (e: Exception) {
                 Result.failure(e)
             }

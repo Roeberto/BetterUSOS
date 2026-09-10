@@ -10,11 +10,16 @@ import pl.opole.edziennik.data.Payment
 import pl.opole.edziennik.data.UsosRepository
 
 /** Odpowiednik sekcji płatności z `/dashboard` w aplikacji webowej — tu
- * jako osobna zakładka (patrz pasek na dole Pulpitu). */
+ * jako osobna zakładka (patrz pasek na dole Pulpitu), z podziałem na
+ * należności nierozliczone i rozliczone. */
 data class PaymentsUiState(
     val isLoading: Boolean = true,
-    val payments: List<Payment> = emptyList(),
-    val paymentsTotal: Double = 0.0,
+    /** `state != "paid"` — należności do zapłaty. */
+    val outstanding: List<Payment> = emptyList(),
+    /** `state == "paid"` — należności już opłacone. */
+    val settled: List<Payment> = emptyList(),
+    /** Suma należności nierozliczonych — "do zapłaty łącznie". */
+    val outstandingTotal: Double = 0.0,
     val error: String? = null,
 )
 
@@ -34,11 +39,13 @@ class PaymentsViewModel(private val repository: UsosRepository) : ViewModel() {
             val current = _uiState.value
             _uiState.value = current.copy(isLoading = true)
 
-            val result = repository.fetchOutstandingPayments(forceRefresh)
+            val result = repository.fetchPayments(forceRefresh)
+            val all = result.getOrNull()?.first
             _uiState.value = current.copy(
                 isLoading = false,
-                payments = result.getOrNull()?.first ?: current.payments,
-                paymentsTotal = result.getOrNull()?.second ?: current.paymentsTotal,
+                outstanding = all?.filter { it.state != "paid" } ?: current.outstanding,
+                settled = all?.filter { it.state == "paid" } ?: current.settled,
+                outstandingTotal = result.getOrNull()?.second ?: current.outstandingTotal,
                 error = result.exceptionOrNull()?.message,
             )
         }
