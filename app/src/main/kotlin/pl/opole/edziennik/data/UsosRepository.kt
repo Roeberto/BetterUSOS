@@ -26,6 +26,7 @@ data class Payment(
 data class DistributionBar(val symbol: String, val percent: Double)
 
 private val paymentTypeLabels = mapOf(
+    // Enumy USOS dla należności NIEROZLICZONYCH ({"id": "tuition_fee", ...}).
     "dormitory" to "Akademik",
     "tuition_fee" to "Czesne",
     "deposit" to "Kaucja",
@@ -37,7 +38,37 @@ private val paymentTypeLabels = mapOf(
     "credit_point" to "Punkt kredytowy",
     "token" to "Żeton",
     "others" to "Inne",
+    // Kody etapów dla należności ROZLICZONYCH (USOS zwraca "ETAP_CZESNE",
+    // "ETAP_ODSETKI", ... zamiast enuma) — po zdjęciu prefiksu "ETAP_" i
+    // lowercase trafiają tutaj.
+    "czesne" to "Czesne",
+    "odsetki" to "Odsetki",
+    "kara" to "Kara",
 )
+
+/**
+ * Sprowadza `type` z `payments/user_payments` do czytelnej etykiety.
+ * Nierozliczone należności zwracają enum (`{"id": "tuition_fee"}`),
+ * rozliczone — kod etapu (`"ETAP_CZESNE"`), a część rozliczonych nie ma
+ * typu w ogóle (najczęściej odsetki). Wszystkie trzy przypadki lądują we
+ * wspólnym słowniku; nierozpoznane/puste to "Odsetki" (jeśli opis o tym
+ * mówi) albo "Inne" — bez surowych kodów typu "ETAP_CZESNE" na ekranie.
+ */
+private fun paymentTypeLabel(rawType: Any?, description: String?): String {
+    val key = when (rawType) {
+        is JSONObject -> rawType.optStringOrNull("id") ?: rawType.optStringOrNull("key")
+        else -> rawType?.toString()
+    }?.takeIf { it.isNotBlank() && it != "null" }
+
+    val normalized = key
+        ?.removePrefix("ETAP_")?.removePrefix("etap_")
+        ?.lowercase()
+
+    paymentTypeLabels[normalized]?.let { return it }
+    if (rawType is JSONObject) plText(rawType).ifEmpty { null }?.let { return it }
+    if (description?.contains("odsetk", ignoreCase = true) == true) return "Odsetki"
+    return "Inne"
+}
 
 private val isoDate: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
@@ -207,19 +238,8 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                 for (i in 0 until arr.length()) {
                     val p = arr.getJSONObject(i)
 
-                    // `type` bywa zwrócone jako obiekt (np. {"id": "tuition_fee", ...})
-                    // albo LangDict, a nie sam string enum — ten sam wzorzec, co
-                    // przy `modification_author` w ocenach po stronie webowej.
-                    val rawType = p.opt("type")
-                    val typeKey = if (rawType is JSONObject) {
-                        rawType.optStringOrNull("id") ?: rawType.optStringOrNull("key")
-                    } else {
-                        rawType?.toString()
-                    }
-                    val typeLabel = paymentTypeLabels[typeKey]
-                        ?: (if (rawType is JSONObject) plText(rawType).ifEmpty { null } else null)
-                        ?: typeKey
-                        ?: "Płatność"
+                    val description = plText(p.opt("description")).ifEmpty { null }
+                    val typeLabel = paymentTypeLabel(p.opt("type"), description)
 
                     val rawState = p.opt("state")
                     val state = if (rawState is JSONObject) rawState.optStringOrNull("id") else rawState?.toString()
@@ -249,7 +269,7 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                     payments.add(
                         Payment(
                             typeLabel = typeLabel,
-                            description = plText(p.opt("description")).ifEmpty { null },
+                            description = description,
                             amount = amount,
                             currency = currency,
                             paymentDeadline = p.optStringOrNull("payment_deadline"),
