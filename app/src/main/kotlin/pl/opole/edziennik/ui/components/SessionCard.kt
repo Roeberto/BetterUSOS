@@ -62,7 +62,8 @@ fun SessionCard(entry: SessionEntry, modifier: Modifier = Modifier, onClick: (()
                 Text(
                     "${hm(entry.startTime)}–${hm(entry.endTime)}",
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
                 )
                 if (entry.typeAbbr.isNotEmpty()) {
                     Text(
@@ -70,6 +71,7 @@ fun SessionCard(entry: SessionEntry, modifier: Modifier = Modifier, onClick: (()
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
