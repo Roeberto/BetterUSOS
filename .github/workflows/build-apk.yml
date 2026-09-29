@@ -25,9 +25,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # Bez osobnego kroku instalującego SDK: runnery ubuntu-latest mają
+      # Android SDK już preinstalowany (ANDROID_HOME, platformy, build-tools,
+      # zaakceptowane licencje). `android-actions/setup-android@v3` próbował
+      # doinstalować przestarzały pakiet "tools" (`sdkmanager tools`), którego
+      # Google już nie serwuje w repozytorium SDK — akcja jest nieaktualizowana
+      # i zawsze na tym padała (exit 1, "Failed to find package 'tools'").
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
