@@ -68,9 +68,15 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
     val startYear = academicYearStart(state.yearMonth)
     val months = academicYearMonths(startYear)
 
-    // Reset filtra dnia przy zmianie miesiąca — stary wybór nie miałby
-    // sensu w nowym zestawie dni.
-    var selectedDay by remember(state.yearMonth) { mutableStateOf<LocalDate?>(null) }
+    // Reset filtra dnia przy (ręcznej) zmianie miesiąca — stary wybór nie
+    // miałby sensu w nowym zestawie dni. Wyjątek: pierwsze wylądowanie na
+    // ekranie ustawia go od razu na `initialSelectedDay` (dziś albo
+    // najbliższy nadchodzący dzień z zajęciami — patrz `loadInitial()` w
+    // PlanViewModel), o ile ten dzień faktycznie należy do miesiąca, który
+    // się właśnie załadował.
+    var selectedDay by remember(state.yearMonth) {
+        mutableStateOf(state.initialSelectedDay?.takeIf { YearMonth.from(it) == state.yearMonth })
+    }
     val visibleDays = if (selectedDay != null) state.days.filter { it.date == selectedDay } else state.days
 
     Scaffold(

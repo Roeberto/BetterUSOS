@@ -8,15 +8,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import pl.opole.edziennik.data.DayGroup
 import pl.opole.edziennik.data.UsosRepository
+import java.time.LocalDate
 import java.time.YearMonth
 
 /** Odpowiednik trasy `/plan` z aplikacji webowej — jeden miesiąc naraz,
- * z zakładkami do przełączania (patrz `academic_year_months` w app.py). */
+ * z zakładkami do przełączania (patrz `academic_year_months` w app.py).
+ *
+ * `initialSelectedDay` to dzień, na który ekran ma wylądować przy wejściu
+ * (dziś, jeśli są dziś zajęcia, w przeciwnym razie najbliższy nadchodzący
+ * dzień z zajęciami — patrz `loadInitial()`) — `null`, dopóki się nie
+ * wyliczy, albo gdy w najbliższych 60 dniach nie ma żadnych zajęć. */
 data class PlanUiState(
     val isLoading: Boolean = true,
     val yearMonth: YearMonth = YearMonth.now(),
     val days: List<DayGroup> = emptyList(),
     val error: String? = null,
+    val initialSelectedDay: LocalDate? = null,
 )
 
 fun academicYearStart(yearMonth: YearMonth): Int =
@@ -30,7 +37,23 @@ class PlanViewModel(private val repository: UsosRepository) : ViewModel() {
     val uiState: StateFlow<PlanUiState> = _uiState
 
     init {
-        load(YearMonth.now())
+        loadInitial()
+    }
+
+    /** Przy wejściu na ekran ląduje od razu na dzisiejszym dniu zajęć, a
+     * jeśli dziś nic nie ma — na najbliższym nadchodzącym dniu z zajęciami
+     * (przeszukuje do 60 dni naprzód, może wypaść w kolejnym miesiącu).
+     * Gdy w tym oknie nie ma żadnych zajęć, wraca do zwykłego widoku
+     * bieżącego miesiąca bez zaznaczonego dnia. */
+    private fun loadInitial() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val probe = repository.fetchSchedule(today, today.plusDays(60)).getOrNull()
+            val target = probe?.filter { it.date >= today }?.minByOrNull { it.date }?.date
+
+            _uiState.value = _uiState.value.copy(initialSelectedDay = target)
+            load(target?.let { YearMonth.from(it) } ?: YearMonth.now())
+        }
     }
 
     /** `forceRefresh = true` (przycisk odświeżania) pomija cache i zawsze pyta USOS
