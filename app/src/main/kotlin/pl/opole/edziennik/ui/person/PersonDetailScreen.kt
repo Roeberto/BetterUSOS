@@ -35,8 +35,7 @@ import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
-import pl.opole.edziennik.ui.components.SessionCard
-import pl.opole.edziennik.ui.components.sessionCardClickHandler
+import pl.opole.edziennik.ui.components.DaySection
 import pl.opole.edziennik.viewmodel.PersonDetailViewModel
 import pl.opole.edziennik.viewmodel.PersonDetailViewModelFactory
 import java.io.File
@@ -188,15 +187,7 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                             )
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                state.schedule.forEach { day ->
-                                    Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold)
-                                    day.entries.forEach { entry ->
-                                        SessionCard(
-                                            entry = entry,
-                                            onClick = sessionCardClickHandler(navController, entry.unitId, entry.groupNumber),
-                                        )
-                                    }
-                                }
+                                state.schedule.forEach { day -> DaySection(day, navController) }
                             }
                         }
                     }

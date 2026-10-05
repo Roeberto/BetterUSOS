@@ -38,8 +38,7 @@ import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
-import pl.opole.edziennik.ui.components.SessionCard
-import pl.opole.edziennik.ui.components.sessionCardClickHandler
+import pl.opole.edziennik.ui.components.DaySection
 import pl.opole.edziennik.ui.theme.PillShape
 import pl.opole.edziennik.viewmodel.PlanViewModel
 import pl.opole.edziennik.viewmodel.PlanViewModelFactory
@@ -183,15 +182,7 @@ fun PlanScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostC
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     state.error?.let { item { ErrorBanner() } }
-                    visibleDays.forEach { day ->
-                        item { Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold) }
-                        items(day.entries) { entry ->
-                            SessionCard(
-                                entry = entry,
-                                onClick = sessionCardClickHandler(navController, entry.unitId, entry.groupNumber),
-                            )
-                        }
-                    }
+                    items(visibleDays) { day -> DaySection(day, navController) }
                 }
             }
         }
