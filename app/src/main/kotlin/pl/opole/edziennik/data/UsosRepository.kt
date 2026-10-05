@@ -454,16 +454,6 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
         result
     }
 
-    /** Zwraca ID zalogowanego użytkownika w USOS — potrzebne tylko po to,
-     * żeby przy liczeniu uczestników grupy odjąć samego siebie z listy.
-     * Odpowiednik `current_user_id()` z app.py (tu bez osobnego
-     * cache'owania w pamięci — sam plik na dysku wystarcza). */
-    private suspend fun currentUserId(forceRefresh: Boolean = false): Int? = withContext(Dispatchers.IO) {
-        val resp = get("users/user", mapOf("fields" to "id"), forceRefresh)
-        if (!resp.isSuccessful) return@withContext null
-        JSONObject(resp.body).optIntOrNull("id")
-    }
-
     /** Odpowiednik trasy `/grupa/<unit_id>/<group_number>` z app.py. */
     suspend fun fetchGroupDetail(unitId: Int, groupNumber: Int, forceRefresh: Boolean = false): Result<GroupDetail> =
         withContext(Dispatchers.IO) {
@@ -480,7 +470,6 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                 if (!resp.isSuccessful) return@withContext Result.failure(Exception(resp.body))
 
                 val data = JSONObject(resp.body)
-                val myId = currentUserId(forceRefresh)
 
                 val lecturers = mutableListOf<Person>()
                 data.optJSONArray("lecturers")?.let { arr ->
@@ -489,12 +478,13 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                     }
                 }
 
+                // Pełna lista uczestników, łącznie z samym zalogowanym
+                // użytkownikiem — wcześniej był tu wykluczany, co dawało
+                // liczbę uczestników niezgodną z faktycznym składem grupy.
                 val participants = mutableListOf<Person>()
                 data.optJSONArray("participants")?.let { arr ->
                     for (i in 0 until arr.length()) {
-                        val p = arr.optJSONObject(i) ?: continue
-                        if (p.optIntOrNull("id") == myId) continue
-                        participants.add(formatPerson(p))
+                        arr.optJSONObject(i)?.let { participants.add(formatPerson(it)) }
                     }
                 }
 

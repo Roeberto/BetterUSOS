@@ -40,8 +40,8 @@ import java.io.File
 /**
  * Odpowiednik trasy `/grupa/<unit_id>/<group_number>` (group_detail.html) z
  * aplikacji webowej — przedmiot, forma zajęć, prowadzący (klikalni do strony
- * osoby) i lista pozostałych uczestników (bez samego zalogowanego użytkownika
- * — patrz `current_user_id()`/`fetchGroupDetail()`). Dane są cache'owane na
+ * osoby) i pełna lista uczestników, łącznie z samym zalogowanym
+ * użytkownikiem (patrz `fetchGroupDetail()`). Dane są cache'owane na
  * dysku — przycisk odświeżania wymusza świeże pobranie.
  */
 @Composable
