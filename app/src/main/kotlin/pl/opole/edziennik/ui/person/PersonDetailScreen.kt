@@ -35,29 +35,30 @@ import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
+import pl.opole.edziennik.ui.components.SessionCard
+import pl.opole.edziennik.ui.components.sessionCardClickHandler
 import pl.opole.edziennik.viewmodel.PersonDetailViewModel
 import pl.opole.edziennik.viewmodel.PersonDetailViewModelFactory
 import java.io.File
 
 /**
  * Odpowiednik trasy `/osoba/<user_id>` (person_detail.html) z aplikacji
- * webowej — miejsce zatrudnienia, dyżur i dane kontaktowe (na razie głównie
- * przydatne dla prowadzących). Dane są cache'owane na dysku — przycisk
- * odświeżania wymusza świeże pobranie.
+ * webowej — miejsce zatrudnienia, dyżur, dane kontaktowe i plan zajęć tej
+ * osoby na najbliższe 14 dni (web tego nie miał), żeby wiedzieć, gdzie/kiedy
+ * można ją spotkać. Dane są cache'owane na dysku — przycisk odświeżania
+ * wymusza świeże pobranie.
  *
- * UWAGA: próba dodania tu sekcji "Plan zajęć tej osoby" (patrz git log)
- * została wycofana i NIE da się jej prosto przywrócić — potwierdzone ręcznym
- * testem bezpośrednio przez USOS API (poza appką, przez curl + własnoręcznie
- * podpisane OAuth1, z pominięciem Workera i jakiegokolwiek kodu appki): wołanie
- * `tt/user` z `user_id=<id innej osoby>` zwraca DOKŁADNIE te same dane co
- * wołanie bez `user_id` w ogóle (identyczny JSON) — USOS dla tego konsumenta
- * całkowicie ignoruje `user_id` i zawsze zwraca plan zalogowanego
- * użytkownika. To ograniczenie samego API tej instalacji, nie coś
- * naprawialnego po naszej stronie (appka/Worker/cache — wszystkie
- * zweryfikowane jako poprawne niezależnie od tego testu).
- * `UsosRepository.fetchSchedule(userId=...)` zostaje w kodzie — poprawnie
- * zaimplementowane, ale nieużywane — na wypadek gdyby kiedyś znalazła się
- * inna metoda/scope, która to faktycznie obsługuje.
+ * Plan pobierany jest przez `tt/staff` (`fetchStaffSchedule()`), NIE przez
+ * `tt/user` — to drugie mimo przyjmowania `user_id` zawsze zwraca plan
+ * WYWOŁUJĄCEGO, ignorując ten parametr (potwierdzone ręcznym testem na żywo
+ * bezpośrednio przez USOS API, z pominięciem appki/Workera — patrz git log).
+ * `tt/staff` to osobna, publiczna metoda w apiref ("Get public staff
+ * member's activities") zaprojektowana dokładnie do tego przypadku —
+ * zweryfikowana na żywych danych (ta sama sala/przedmiot co w oficjalnej
+ * appce USOS). Dla osoby, która nie jest pracownikiem (np. kolega z grupy z
+ * listy uczestników), USOS zwraca pusty wynik albo błąd — sekcja wtedy po
+ * prostu pokazuje "brak zajęć" albo baner błędu, tak jak każdy inny
+ * nieudany fetch w appce.
  */
 @Composable
 fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController, userId: Int) {
@@ -174,6 +175,29 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                                 "Pokaż na stronie USOS: ${detail.emailUrl}",
                                 color = MaterialTheme.colorScheme.primary,
                             )
+                        }
+                    }
+
+                    Column {
+                        InfoLabel("Plan zajęć — najbliższe 14 dni")
+                        state.scheduleError?.let { ErrorBanner() }
+                        if (state.scheduleError == null && state.schedule.isEmpty()) {
+                            Text(
+                                "Brak zaplanowanych zajęć w tym okresie.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                state.schedule.forEach { day ->
+                                    Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold)
+                                    day.entries.forEach { entry ->
+                                        SessionCard(
+                                            entry = entry,
+                                            onClick = sessionCardClickHandler(navController, entry.unitId, entry.groupNumber),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

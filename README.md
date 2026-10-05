@@ -73,13 +73,16 @@ Workera (osobna stała `USOS_WEB_BASE_URL` w `Config.kt`).
   semestr, prowadzący (klikalni) i pełna lista uczestników (sortowana
   alfabetycznie po nazwisku, wyświetlana jako „Nazwisko Imię"), łącznie
   z samym zalogowanym użytkownikiem.
-- **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt.
-  Zdjęcie z USOS albo awatar z inicjałami (Coil). (Próba dodania tu planu
-  zajęć tej osoby została wycofana i potwierdzona jako niemożliwa do prostego
-  naprawienia — ręczny test bezpośrednio przez USOS API (poza appką)
-  pokazał, że `tt/user?user_id=...` dla tego konsumenta zwraca identyczny
-  JSON z i bez `user_id` — USOS ignoruje ten parametr i zawsze zwraca plan
-  zalogowanego użytkownika; patrz komentarz w `PersonDetailScreen.kt`.)
+- **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt i
+  plan zajęć tej osoby na najbliższe 14 dni, żeby wiedzieć, gdzie/kiedy można
+  ją spotkać. Zdjęcie z USOS albo awatar z inicjałami (Coil). Plan idzie
+  przez **`tt/staff`** (publiczna metoda USOS — "Get public staff member's
+  activities"), NIE przez `tt/user`: to drugie mimo przyjmowania `user_id`
+  zawsze zwraca plan WYWOŁUJĄCEGO (potwierdzone ręcznym testem na żywo
+  bezpośrednio przez USOS API, z pominięciem appki — patrz komentarz w
+  `UsosRepository.fetchStaffSchedule()`). Dla osoby, która nie jest
+  pracownikiem (np. kolega z grupy), USOS zwraca pusty wynik/błąd —
+  wygląda to wtedy jak zwykły "brak zajęć" albo baner błędu.
 - **Powiadomienia** — sprawdzanie w tle co 12 h (`sync/SyncWorker.kt`,
   WorkManager), niezależnie od tego, czy aplikacja jest otwarta. Porównuje
   plan na 14 dni i wszystkie oceny z ostatnim znanym stanem; przy zmianie

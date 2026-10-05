@@ -98,53 +98,66 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
         return resp
     }
 
-    /**
-     * Pobiera plan z zakresu dat, odpytując `tt/user` w kawałkach po
-     * (najwyżej) 7 dni — to limit tej metody w tej instalacji USOS
-     * (patrz `fetch_full_schedule` w app.py).
-     *
-     * `userId = null` (domyślnie) pobiera plan zalogowanego użytkownika;
-     * podanie konkretnego `userId` pobiera plan TEJ osoby (np. prowadzącego
-     * na stronie osoby — "gdzie mogę go spotkać") — `tt/user` przyjmuje
-     * opcjonalny `user_id`, więc to ta sama metoda, nie osobne zapytanie.
-     * Jeśli USOS odmówi dostępu do cudzego planu (prywatność), zwraca błąd
-     * jak każde inne nieudane zapytanie — ekran pokazuje to jak zwykły
-     * błąd sieci, bez specjalnego rozróżniania przyczyny.
-     */
-    suspend fun fetchSchedule(
+    /** Wspólny chunking po (najwyżej) 7 dni, używany przez wszystkie metody
+     * tt w tej instalacji USOS (patrz `fetch_full_schedule` w app.py) —
+     * sama nazwa metody i ewentualne dodatkowe parametry (np. `user_id` dla
+     * `tt/staff`) są parametryzowane, więc logika pobierania-w-kawałkach nie
+     * jest duplikowana między `fetchSchedule()` i `fetchStaffSchedule()`. */
+    private suspend fun fetchTimetableEntries(
+        method: String,
         start: LocalDate,
         end: LocalDate,
-        forceRefresh: Boolean = false,
-        userId: Int? = null,
-    ): Result<List<DayGroup>> =
-        withContext(Dispatchers.IO) {
-            try {
-                val entries = mutableListOf<JSONObject>()
-                var cursor = start
-                while (!cursor.isAfter(end)) {
-                    val remaining = ChronoUnit.DAYS.between(cursor, end).toInt() + 1
-                    val days = minOf(7, remaining)
+        forceRefresh: Boolean,
+        extraParams: Map<String, String> = emptyMap(),
+    ): Result<List<JSONObject>> = withContext(Dispatchers.IO) {
+        try {
+            val entries = mutableListOf<JSONObject>()
+            var cursor = start
+            while (!cursor.isAfter(end)) {
+                val remaining = ChronoUnit.DAYS.between(cursor, end).toInt() + 1
+                val days = minOf(7, remaining)
 
-                    val params = mutableMapOf(
-                        "start" to cursor.format(isoDate),
-                        "days" to days.toString(),
-                        "fields" to ("start_time|end_time|name|building_name|room_number" +
-                            "|classtype_name|unit_id|group_number|lecturer_ids"),
-                    )
-                    if (userId != null) params["user_id"] = userId.toString()
+                val params = extraParams + mapOf(
+                    "start" to cursor.format(isoDate),
+                    "days" to days.toString(),
+                    "fields" to ("start_time|end_time|name|building_name|room_number" +
+                        "|classtype_name|unit_id|group_number|lecturer_ids"),
+                )
 
-                    val resp = get("tt/user", params, forceRefresh)
-                    if (!resp.isSuccessful) return@withContext Result.failure(Exception(resp.body))
+                val resp = get(method, params, forceRefresh)
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception(resp.body))
 
-                    val chunk = JSONArray(resp.body)
-                    for (i in 0 until chunk.length()) entries.add(chunk.getJSONObject(i))
-                    cursor = cursor.plusDays(days.toLong())
-                }
-                Result.success(groupByDay(entries, forceRefresh))
-            } catch (e: Exception) {
-                Result.failure(e)
+                val chunk = JSONArray(resp.body)
+                for (i in 0 until chunk.length()) entries.add(chunk.getJSONObject(i))
+                cursor = cursor.plusDays(days.toLong())
             }
+            Result.success(entries)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
+
+    /** Pobiera WŁASNY plan zalogowanego użytkownika — `tt/user`. */
+    suspend fun fetchSchedule(start: LocalDate, end: LocalDate, forceRefresh: Boolean = false): Result<List<DayGroup>> {
+        val entries = fetchTimetableEntries("tt/user", start, end, forceRefresh).getOrElse { return Result.failure(it) }
+        return Result.success(groupByDay(entries, forceRefresh))
+    }
+
+    /**
+     * Plan zajęć PRACOWNIKA (np. prowadzącego) — `tt/staff`, metoda
+     * PUBLICZNA ("Public means, that you may anonymously access such
+     * activities of ALL staff members" — apiref), w przeciwieństwie do
+     * `tt/user`, które mimo przyjmowania `user_id` zawsze zwraca plan
+     * WYWOŁUJĄCEGO, ignorując ten parametr (potwierdzone ręcznym testem na
+     * żywo bezpośrednio przez USOS API, z pominięciem appki/Workera — patrz
+     * git log). `tt/staff` jest zaprojektowane dokładnie do tego przypadku:
+     * strona osoby pokazująca, gdzie/kiedy można spotkać prowadzącego.
+     */
+    suspend fun fetchStaffSchedule(userId: Int, start: LocalDate, end: LocalDate, forceRefresh: Boolean = false): Result<List<DayGroup>> {
+        val entries = fetchTimetableEntries("tt/staff", start, end, forceRefresh, mapOf("user_id" to userId.toString()))
+            .getOrElse { return Result.failure(it) }
+        return Result.success(groupByDay(entries, forceRefresh))
+    }
 
     /** Odpowiednik `group_by_day()` + `attach_lecturer_names()` z app.py. */
     private suspend fun groupByDay(entries: List<JSONObject>, forceRefresh: Boolean): List<DayGroup> {
