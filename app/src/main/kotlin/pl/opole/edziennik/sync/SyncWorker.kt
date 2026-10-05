@@ -22,6 +22,7 @@ import pl.opole.edziennik.data.RawGrade
 import pl.opole.edziennik.data.SessionEntry
 import pl.opole.edziennik.data.SyncStateStore
 import pl.opole.edziennik.data.UsosRepository
+import pl.opole.edziennik.data.hm
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.oauth.TokenStore
 import java.io.File
@@ -70,26 +71,43 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
         val today = LocalDate.now()
         val days = repository.fetchSchedule(today, today.plusDays(13), forceRefresh = true).getOrNull() ?: return
 
-        val freshKeys = days.flatMap { day -> day.entries.map(::scheduleKey) }.toSet()
+        val freshByKey = days.flatMap { it.entries }.associateBy(::scheduleKey)
+        val freshKeys = freshByKey.keys
         val oldKeys = stateStore.readScheduleSnapshot()
 
         // Pierwsze uruchomienie (brak wcześniejszego stanu) tylko zapisuje
         // punkt odniesienia — bez tego pierwsza kontrola zgłosiłaby "zmianę"
         // dla całego planu naraz.
         if (oldKeys.isNotEmpty()) {
-            val changed = (freshKeys - oldKeys).size + (oldKeys - freshKeys).size
-            if (changed > 0) {
+            val addedKeys = freshKeys - oldKeys
+            val removedKeys = oldKeys - freshKeys
+
+            if (addedKeys.isNotEmpty() || removedKeys.isNotEmpty()) {
+                // Dla dodanych zajęć mamy cały SessionEntry; dla zniknionych
+                // tylko stary klucz (freshByKey go już nie zawiera) — ale
+                // scheduleKey() jest budowany z pól rozdzielonych "|", więc
+                // da się z niego odtworzyć te same dane z powrotem (patrz
+                // scheduleSummaryFromKey()), bez trzymania osobnego, pełnego
+                // zrzutu starego planu na dysku.
+                val addedLines = addedKeys.sorted().mapNotNull { freshByKey[it] }
+                    .map { "+ ${scheduleSummary(it)}" }
+                val removedLines = removedKeys.sorted().map { "− ${scheduleSummaryFromKey(it)}" }
+
+                val allLines = addedLines + removedLines
+                val shown = allLines.take(MAX_SCHEDULE_DETAIL_LINES)
+                val extra = if (allLines.size > shown.size) "\n… i ${allLines.size - shown.size} więcej" else ""
+
                 events.add(
                     NotificationEvent(
                         id = UUID.randomUUID().toString(),
                         timestamp = System.currentTimeMillis(),
                         type = "schedule",
-                        message = "Wykryto $changed zmian(y) w planie zajęć (najbliższe 14 dni).",
+                        message = "Zmiany w planie zajęć:\n${shown.joinToString("\n")}$extra",
                     ),
                 )
             }
         }
-        stateStore.writeScheduleSnapshot(freshKeys)
+        stateStore.writeScheduleSnapshot(freshKeys.toSet())
     }
 
     private suspend fun checkGrades(
@@ -122,6 +140,42 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
 
     private fun scheduleKey(entry: SessionEntry): String =
         "${entry.startTime}|${entry.endTime}|${entry.displayName}|${entry.buildingName}|${entry.roomNumber}|${entry.lecturersDisplay}"
+
+    /** Jeden czytelny wiersz zmiany w planie, np.
+     * "2026-10-12 10:00–11:30: Matematyka I, bud. A 101". */
+    private fun scheduleSummary(entry: SessionEntry): String =
+        scheduleSummaryParts(entry.startTime, entry.endTime, entry.displayName, entry.buildingName, entry.roomNumber)
+
+    /** To samo co `scheduleSummary()`, ale dla zniknionych zajęć, dla
+     * których mamy już tylko stary `scheduleKey()` (nie cały `SessionEntry`)
+     * — rozbija go z powrotem na te same pola, w tej samej kolejności, w
+     * jakiej `scheduleKey()` je skleił. */
+    private fun scheduleSummaryFromKey(key: String): String {
+        val parts = key.split("|", limit = 6)
+        return scheduleSummaryParts(
+            startTime = parts.getOrElse(0) { "" },
+            endTime = parts.getOrElse(1) { "" },
+            displayName = parts.getOrElse(2) { "zajęcia" },
+            buildingName = parts.getOrElse(3) { "" },
+            roomNumber = parts.getOrElse(4) { "" },
+        )
+    }
+
+    private fun scheduleSummaryParts(
+        startTime: String,
+        endTime: String,
+        displayName: String,
+        buildingName: String,
+        roomNumber: String,
+    ): String {
+        val date = startTime.take(10)
+        val time = "${hm(startTime)}–${hm(endTime)}"
+        val place = listOfNotNull(buildingName.ifBlank { null }, roomNumber.ifBlank { null }).joinToString(" ")
+        return buildString {
+            append(date).append(' ').append(time).append(": ").append(displayName)
+            if (place.isNotBlank()) append(", ").append(place)
+        }
+    }
 
     private fun gradeKey(g: RawGrade): String =
         "${g.courseId}|${g.unitId}|${g.examId}|${g.dateModified}|${g.valueSymbol}"
@@ -159,10 +213,16 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // Zwinięte powiadomienie pokazuje tylko liczby (mało miejsca na
+        // pasku); po rozwinięciu (BigTextStyle) widać te same szczegółowe
+        // linie, co w historii "Powiadomienia" w appce — co dokładnie się
+        // zmieniło, a nie tylko "ile".
+        val detailText = events.joinToString("\n\n") { it.message }
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle("e-dziennik — nowe zmiany")
             .setContentText(parts.joinToString(", "))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(detailText))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
@@ -173,5 +233,6 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
     companion object {
         private const val CHANNEL_ID = "edziennik_updates"
         private const val NOTIFICATION_ID = 1001
+        private const val MAX_SCHEDULE_DETAIL_LINES = 6
     }
 }
