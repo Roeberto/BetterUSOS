@@ -11,9 +11,10 @@ data class UpdateInfo(val versionCode: Int, val downloadUrl: String)
 
 /**
  * Sprawdza, czy na GitHubie jest nowszy build niż ten zainstalowany —
- * publiczne, nieautoryzowane GitHub API (ten sam release "latest-build",
- * który pobieraliśmy ręcznie przez curl przy weryfikacji CI), więc nie idzie
- * przez serwer podpisujący ani nie potrzebuje żadnych danych logowania.
+ * publiczne, nieautoryzowane GitHub API (`releases/latest`, czyli zawsze
+ * najnowszy pełny release — każdy push publikuje osobny, wersjonowany
+ * release, patrz `build-apk.yml`), więc nie idzie przez serwer podpisujący
+ * ani nie potrzebuje żadnych danych logowania.
  *
  * `versionCode` nie jest osobnym polem release'u w GitHub API — CI dopisuje
  * go jako zwykłą linię tekstu do treści ("body") releasu (patrz

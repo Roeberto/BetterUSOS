@@ -49,20 +49,29 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # Główny sposób pobrania: jeden, stały link — każdy push nadpisuje
-      # ten sam release "latest-build" świeżym APK.
-      - name: Publish to rolling release
+      # Każdy push tworzy osobny, w pełni wersjonowany release (tag
+      # "0.<numer builda>") zamiast wiecznie nadpisywać jeden i ten sam
+      # "latest-build" — ten drugi wariant w GitHubie zawsze pokazywał
+      # martwą datę PIERWSZEGO utworzenia tagu (np. "2 września"), mimo że
+      # plik w środku był świeży, i nie dawał żadnej historii wersji.
+      # `prerelease: false`, więc GitHub pokazuje go jako prawdziwy
+      # "Latest release" (nie wyszarzony pre-release) z poprawną datą i
+      # numerem. Stały link do pobrania NIE wymaga znajomości numeru
+      # builda — "releases/latest/download/<plik>" to oficjalny,
+      # przekierowujący alias GitHuba na najnowszy pełny release (patrz
+      # Config.RELEASE_APK_URL / README).
+      - name: Publish versioned release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest-build
-          name: "Najnowszy build (${{ github.sha }})"
+          tag_name: "0.${{ github.run_number }}"
+          name: "Wersja 0.${{ github.run_number }}"
           body: |
-            Automatycznie zbudowany APK z najnowszego commita na `main`
-            (${{ github.sha }}). Działa od razu po instalacji — bez żadnej
-            ręcznej konfiguracji.
+            Automatycznie zbudowany APK z commita `${{ github.sha }}` na
+            `main`. Działa od razu po instalacji — bez żadnej ręcznej
+            konfiguracji.
 
             versionCode: ${{ github.run_number }}
-          prerelease: true
+          prerelease: false
           files: app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

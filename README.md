@@ -92,8 +92,8 @@ Workera (osobna stała `USOS_WEB_BASE_URL` w `Config.kt`).
   pokazanych danych z małym banerem błędu zamiast pustego ekranu. Cache
   nie wygasa — trwa do ręcznego odświeżenia.
 - **Aktualizacje w appce** (`update/UpdateChecker.kt`/`UpdateInstaller.kt`) —
-  przy otwarciu Pulpitu appka pyta publiczne GitHub API o najnowszy build
-  (`latest-build`); jeśli jest nowszy niż zainstalowany (porównanie
+  przy otwarciu Pulpitu appka pyta publiczne GitHub API o najnowszy release
+  (`releases/latest`); jeśli jest nowszy niż zainstalowany (porównanie
   `versionCode`), pokazuje baner z przyciskiem „Pobierz". Appka ściąga APK i
   odpala systemowy instalator — prawdziwie ciche aktualizowanie nie jest
   możliwe poza Play Store bez bycia aplikacją systemową, więc user i tak
@@ -111,11 +111,16 @@ Workera (osobna stała `USOS_WEB_BASE_URL` w `Config.kt`).
 
 ## Pobranie gotowego APK
 
-Każdy push na `main` automatycznie buduje APK i wystawia go jako release na
-GitHubie (`.github/workflows/build-apk.yml`):
+Każdy push na `main` automatycznie buduje APK i wystawia go jako osobny,
+wersjonowany release na GitHubie (`.github/workflows/build-apk.yml`) — tag
+`0.<numer builda>`, widoczny w zakładce **Releases** razem z pełną historią
+poprzednich wersji (nie jeden wiecznie nadpisywany wpis).
 
-- **Releases** → tag `latest-build` (nadpisywany przy każdym commicie) —
-  jeden stały link do najnowszego APK.
+- Stały link, który zawsze wskazuje na najnowszy APK, bez szukania numeru
+  builda: https://github.com/Roeberto/BetterUSOS/releases/latest/download/app-debug.apk
+  (oficjalny alias GitHuba na plik z najnowszego release'u).
+- albo **Releases** → wybrana wersja z listy (np. żeby wrócić do starszego
+  builda).
 - albo **Actions** → wybrany run → sekcja *Artifacts* (przydatne, gdy
   chcesz APK z konkretnego commita).
 
