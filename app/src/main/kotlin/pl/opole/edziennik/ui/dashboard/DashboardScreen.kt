@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
+import pl.opole.edziennik.BuildConfig
 import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
@@ -126,6 +127,8 @@ fun DashboardScreen(
             state.updateInfo?.let { info ->
                 item {
                     UpdateBanner(
+                        currentVersionCode = BuildConfig.VERSION_CODE,
+                        newVersionCode = info.versionCode,
                         installing = installing,
                         error = installError,
                         onInstallClick = {
@@ -164,9 +167,19 @@ fun DashboardScreen(
  * — pokazuje się tylko, gdy na GitHubie jest build nowszy niż zainstalowany.
  * Przycisk ściąga APK i odpala systemowy instalator (`UpdateInstaller`); po
  * powrocie z ekranu zgody na "nieznane źródła" (pierwszy raz na danym
- * telefonie) trzeba tapnąć jeszcze raz. */
+ * telefonie) trzeba tapnąć jeszcze raz.
+ *
+ * Numery wersji ("0.24 → 0.25") liczone wprost z versionCode — tag releasu w
+ * CI to zawsze "0.<numer builda>" (patrz `build-apk.yml`), więc nie trzeba
+ * dociągać osobno nazwy wersji, sam numer wystarczy do zbudowania etykiety. */
 @Composable
-private fun UpdateBanner(installing: Boolean, error: String?, onInstallClick: () -> Unit) {
+private fun UpdateBanner(
+    currentVersionCode: Int,
+    newVersionCode: Int,
+    installing: Boolean,
+    error: String?,
+    onInstallClick: () -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -180,7 +193,7 @@ private fun UpdateBanner(installing: Boolean, error: String?, onInstallClick: ()
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Dostępna nowa wersja aplikacji.",
+                "Dostępna nowa wersja aplikacji: 0.$currentVersionCode → 0.$newVersionCode",
                 modifier = Modifier.weight(1f).padding(end = 12.dp),
             )
             Text(
