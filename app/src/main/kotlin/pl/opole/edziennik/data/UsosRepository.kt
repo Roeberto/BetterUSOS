@@ -102,8 +102,21 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
      * Pobiera plan z zakresu dat, odpytując `tt/user` w kawałkach po
      * (najwyżej) 7 dni — to limit tej metody w tej instalacji USOS
      * (patrz `fetch_full_schedule` w app.py).
+     *
+     * `userId = null` (domyślnie) pobiera plan zalogowanego użytkownika;
+     * podanie konkretnego `userId` pobiera plan TEJ osoby (np. prowadzącego
+     * na stronie osoby — "gdzie mogę go spotkać") — `tt/user` przyjmuje
+     * opcjonalny `user_id`, więc to ta sama metoda, nie osobne zapytanie.
+     * Jeśli USOS odmówi dostępu do cudzego planu (prywatność), zwraca błąd
+     * jak każde inne nieudane zapytanie — ekran pokazuje to jak zwykły
+     * błąd sieci, bez specjalnego rozróżniania przyczyny.
      */
-    suspend fun fetchSchedule(start: LocalDate, end: LocalDate, forceRefresh: Boolean = false): Result<List<DayGroup>> =
+    suspend fun fetchSchedule(
+        start: LocalDate,
+        end: LocalDate,
+        forceRefresh: Boolean = false,
+        userId: Int? = null,
+    ): Result<List<DayGroup>> =
         withContext(Dispatchers.IO) {
             try {
                 val entries = mutableListOf<JSONObject>()
@@ -112,16 +125,15 @@ class UsosRepository(private val client: UsosApiClient, cacheDir: File) {
                     val remaining = ChronoUnit.DAYS.between(cursor, end).toInt() + 1
                     val days = minOf(7, remaining)
 
-                    val resp = get(
-                        "tt/user",
-                        mapOf(
-                            "start" to cursor.format(isoDate),
-                            "days" to days.toString(),
-                            "fields" to ("start_time|end_time|name|building_name|room_number" +
-                                "|classtype_name|unit_id|group_number|lecturer_ids"),
-                        ),
-                        forceRefresh,
+                    val params = mutableMapOf(
+                        "start" to cursor.format(isoDate),
+                        "days" to days.toString(),
+                        "fields" to ("start_time|end_time|name|building_name|room_number" +
+                            "|classtype_name|unit_id|group_number|lecturer_ids"),
                     )
+                    if (userId != null) params["user_id"] = userId.toString()
+
+                    val resp = get("tt/user", params, forceRefresh)
                     if (!resp.isSuccessful) return@withContext Result.failure(Exception(resp.body))
 
                     val chunk = JSONArray(resp.body)

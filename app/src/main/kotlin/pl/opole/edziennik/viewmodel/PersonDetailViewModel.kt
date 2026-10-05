@@ -6,14 +6,20 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import pl.opole.edziennik.data.DayGroup
 import pl.opole.edziennik.data.PersonDetail
 import pl.opole.edziennik.data.UsosRepository
+import java.time.LocalDate
 
-/** Odpowiednik trasy `/osoba/<user_id>` z aplikacji webowej. */
+/** Odpowiednik trasy `/osoba/<user_id>` z aplikacji webowej — plus plan
+ * zajęć tej osoby na najbliższe 14 dni (web tego nie miał), żeby wiedzieć,
+ * gdzie/kiedy można ją spotkać — głównie przydatne dla prowadzących. */
 data class PersonDetailUiState(
     val isLoading: Boolean = true,
     val detail: PersonDetail? = null,
     val error: String? = null,
+    val schedule: List<DayGroup> = emptyList(),
+    val scheduleError: String? = null,
 )
 
 class PersonDetailViewModel(
@@ -36,10 +42,15 @@ class PersonDetailViewModel(
             _uiState.value = current.copy(isLoading = true)
 
             val result = repository.fetchPersonDetail(userId, forceRefresh)
+            val today = LocalDate.now()
+            val scheduleResult = repository.fetchSchedule(today, today.plusDays(13), forceRefresh, userId = userId)
+
             _uiState.value = current.copy(
                 isLoading = false,
                 detail = result.getOrNull() ?: current.detail,
                 error = result.exceptionOrNull()?.message,
+                schedule = scheduleResult.getOrNull() ?: current.schedule,
+                scheduleError = scheduleResult.exceptionOrNull()?.message,
             )
         }
     }
