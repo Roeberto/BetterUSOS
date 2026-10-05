@@ -46,13 +46,18 @@ import java.io.File
  * odświeżania wymusza świeże pobranie.
  *
  * UWAGA: próba dodania tu sekcji "Plan zajęć tej osoby" (patrz git log)
- * została wycofana — `tt/user?user_id=...` w tej instalacji USOS po cichu
- * ignoruje `user_id` i zwraca plan ZALOGOWANEGO użytkownika zamiast planu
- * oglądanej osoby (potwierdzone na żywych danych: appka pokazywała własne
- * zajęcia pod cudzym profilem). `UsosRepository.fetchSchedule(userId=...)`
- * zostaje w kodzie — jest poprawnie zaimplementowane po naszej stronie — ale
- * nieużywane, dopóki nie znajdziemy właściwego sposobu pobrania cudzego
- * planu (patrz apiref, inna metoda/scope?).
+ * została wycofana i NIE da się jej prosto przywrócić — potwierdzone ręcznym
+ * testem bezpośrednio przez USOS API (poza appką, przez curl + własnoręcznie
+ * podpisane OAuth1, z pominięciem Workera i jakiegokolwiek kodu appki): wołanie
+ * `tt/user` z `user_id=<id innej osoby>` zwraca DOKŁADNIE te same dane co
+ * wołanie bez `user_id` w ogóle (identyczny JSON) — USOS dla tego konsumenta
+ * całkowicie ignoruje `user_id` i zawsze zwraca plan zalogowanego
+ * użytkownika. To ograniczenie samego API tej instalacji, nie coś
+ * naprawialnego po naszej stronie (appka/Worker/cache — wszystkie
+ * zweryfikowane jako poprawne niezależnie od tego testu).
+ * `UsosRepository.fetchSchedule(userId=...)` zostaje w kodzie — poprawnie
+ * zaimplementowane, ale nieużywane — na wypadek gdyby kiedyś znalazła się
+ * inna metoda/scope, która to faktycznie obsługuje.
  */
 @Composable
 fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController, userId: Int) {
