@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Odpowiada katalogowi, do którego UpdateInstaller zapisuje pobrany APK
+     (context.cacheDir/updates/). -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="updates" path="updates/" />
+</paths>

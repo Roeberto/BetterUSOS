@@ -88,6 +88,16 @@ Workera (osobna stała `USOS_WEB_BASE_URL` w `Config.kt`).
   odświeżenie zawiedzie (np. brak sieci), ekran zostaje przy ostatnio
   pokazanych danych z małym banerem błędu zamiast pustego ekranu. Cache
   nie wygasa — trwa do ręcznego odświeżenia.
+- **Aktualizacje w appce** (`update/UpdateChecker.kt`/`UpdateInstaller.kt`) —
+  przy otwarciu Pulpitu appka pyta publiczne GitHub API o najnowszy build
+  (`latest-build`); jeśli jest nowszy niż zainstalowany (porównanie
+  `versionCode`), pokazuje baner z przyciskiem „Pobierz". Appka ściąga APK i
+  odpala systemowy instalator — prawdziwie ciche aktualizowanie nie jest
+  możliwe poza Play Store bez bycia aplikacją systemową, więc user i tak
+  potwierdza instalację jednym tapnięciem standardowego okienka Androida.
+  Wymaga stabilnego podpisu między buildami (patrz `keystore/` niżej) —
+  inaczej instalacja nowszej wersji nad starszą kończyłaby się błędem
+  konfliktu podpisów.
 - **Tryb ciemny** — automatyczny, wg ustawień systemu.
 - **Wygląd „ledgerowy"** przeniesiony z wersji webowej — ta sama para
   fontów (Source Serif 4 do nagłówków, Inter do treści, dołączone w
@@ -109,6 +119,16 @@ GitHubie (`.github/workflows/build-apk.yml`):
 APK nie ma wbudowanego klucza USOS i działa od razu po instalacji — pod
 warunkiem, że serwer podpisujący (niżej) jest wdrożony i jego adres jest
 wpisany w `Config.kt`.
+
+**Stabilny klucz podpisu** (`keystore/debug.keystore`, dołączony w repo) —
+bez niego każdy build z GitHub Actions miałby inny, losowo wygenerowany
+podpis (domyślny `~/.android/debug.keystore` jest tworzony od nowa na każdej
+świeżej maszynie CI), a instalacja nowszej wersji nad starszą kończyłaby się
+błędem „Nie zainstalowano" (konflikt podpisów) zamiast ją aktualizować. Ten
+klucz nie chroni niczego tajnego — jego jedyna rola to spójność między
+buildami, dlatego bezpiecznie trzymać go w publicznym repo, tak samo jak
+appka nigdy nie trzyma żadnego PRAWDZIWEGO sekretu w kodzie (patrz `proxy/`
+niżej).
 
 ## Wdrożenie serwera podpisującego (jednorazowo)
 
@@ -170,14 +190,19 @@ native_app/
                                forward do USOS
     wrangler.toml            — konfiguracja Workera
     README.md                — instrukcja wdrożenia
+  keystore/debug.keystore     — stabilny klucz podpisu CI (nie sekret — patrz
+                               "Pobranie gotowego APK" wyżej)
   app/src/main/kotlin/pl/opole/edziennik/
     Config.kt                — stałe: adres Workera, adres USOS, callback
-                               OAuth (bez sekretów)
+                               OAuth, adresy sprawdzania aktualizacji
+                               (bez sekretów)
     MainActivity.kt          — punkt wejścia, obsługa callbacku i powiadomień
     oauth/                   — logowanie (request/access token), trwały token
     network/                 — klient HTTP do serwera podpisującego
     data/                    — parsowanie odpowiedzi USOS (odpowiednik
                                fetch_* z app.py), cache na dysku
+    update/                  — sprawdzanie i instalacja nowszej wersji APK
+                               (UpdateChecker/UpdateInstaller)
     viewmodel/               — stan ekranów (StateFlow + ViewModel)
     ui/
       dashboard/ plan/ grades/ payments/ group/ person/
@@ -186,7 +211,8 @@ native_app/
                                 AppIconButton
       theme/                  — kolory, typografia, kształty (wygląd ledger)
     sync/                    — cykliczne sprawdzanie w tle (WorkManager)
-  .github/workflows/build-apk.yml — CI: build APK + rolling release
+  .github/workflows/build-apk.yml — CI: build APK (stabilny podpis,
+                               versionCode = numer builda) + rolling release
 ```
 
 ## Stack

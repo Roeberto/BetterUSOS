@@ -3,6 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// `versionCode` musi realnie rosnąć z buildem na build, żeby appka (patrz
+// update/UpdateChecker.kt) mogła w ogóle stwierdzić "czy wersja na GitHubie
+// jest nowsza niż zainstalowana". CI przekazuje numer builda GitHub Actions
+// przez `-PappVersionCode=...` (rośnie z każdym pushem); lokalne buildy bez
+// tej flagi dostają stałe 1 — wystarczające do kompilacji, update-checker po
+// prostu nigdy nie zgłosi aktualizacji na buildzie lokalnym.
+val ciVersionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+
 android {
     namespace = "pl.opole.edziennik"
     compileSdk = 34
@@ -11,8 +19,26 @@ android {
         applicationId = "pl.opole.edziennik"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = ciVersionCode
         versionName = "0.1.0"
+    }
+
+    // Stabilny klucz debug (dołączony w repo, keystore/debug.keystore) —
+    // domyślny `~/.android/debug.keystore` jest generowany od nowa, z innym
+    // losowym kluczem, na każdej świeżej maszynie CI. Bez tego każdy build z
+    // GitHub Actions miał inny podpis, więc instalacja nowszego APK nad
+    // starszym kończyła się błędem "Nie zainstalowano" (konflikt podpisów),
+    // zamiast zaktualizować appkę. Ten klucz nie chroni niczego tajnego —
+    // jego jedyna rola to spójność między buildami, dlatego bezpiecznie
+    // trzymać go w publicznym repo (tak samo jak w wersji webowej nigdy nie
+    // trzymamy żadnego PRAWDZIWEGO sekretu w kodzie — patrz proxy/).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -36,6 +62,11 @@ android {
 
     buildFeatures {
         compose = true
+        // Daje BuildConfig.VERSION_CODE/VERSION_NAME (standardowe pola AGP,
+        // żadnych własnych sekretów — te zniknęły razem z lokalnym podpisywaniem
+        // OAuth1, patrz proxy/) — potrzebne update-checkerowi do porównania z
+        // wersją na GitHubie.
+        buildConfig = true
     }
 
     composeOptions {

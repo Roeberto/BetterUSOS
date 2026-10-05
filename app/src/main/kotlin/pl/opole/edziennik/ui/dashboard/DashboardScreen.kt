@@ -1,12 +1,16 @@
 package pl.opole.edziennik.ui.dashboard
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,16 +25,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
@@ -38,6 +47,9 @@ import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
 import pl.opole.edziennik.ui.components.SessionCard
 import pl.opole.edziennik.ui.components.sessionCardClickHandler
+import pl.opole.edziennik.ui.theme.CardShape
+import pl.opole.edziennik.ui.theme.PillShape
+import pl.opole.edziennik.update.UpdateInstaller
 import pl.opole.edziennik.viewmodel.AuthViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModel
 import pl.opole.edziennik.viewmodel.DashboardViewModelFactory
@@ -59,6 +71,12 @@ fun DashboardScreen(
     val repository = remember { UsosRepository(apiClient, cacheDir) }
     val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(repository))
     val state by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val updateInstaller = remember { UpdateInstaller(context.applicationContext) }
+    var installing by remember { mutableStateOf(false) }
+    var installError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -105,6 +123,23 @@ fun DashboardScreen(
 
             state.scheduleError?.let { item { ErrorBanner() } }
 
+            state.updateInfo?.let { info ->
+                item {
+                    UpdateBanner(
+                        installing = installing,
+                        error = installError,
+                        onInstallClick = {
+                            installError = null
+                            installing = true
+                            scope.launch {
+                                installError = updateInstaller.downloadAndInstall(info.downloadUrl)
+                                installing = false
+                            }
+                        },
+                    )
+                }
+            }
+
             when {
                 state.schedule.isEmpty() -> item {
                     Text("Brak zaplanowanych zajęć w tym okresie.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -121,6 +156,51 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** Baner dostępnej aktualizacji (patrz `DashboardViewModel.checkForUpdate()`)
+ * — pokazuje się tylko, gdy na GitHubie jest build nowszy niż zainstalowany.
+ * Przycisk ściąga APK i odpala systemowy instalator (`UpdateInstaller`); po
+ * powrocie z ekranu zgody na "nieznane źródła" (pierwszy raz na danym
+ * telefonie) trzeba tapnąć jeszcze raz. */
+@Composable
+private fun UpdateBanner(installing: Boolean, error: String?, onInstallClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
+            .border(1.5.dp, MaterialTheme.colorScheme.primary, CardShape)
+            .padding(14.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Dostępna nowa wersja aplikacji.",
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
+            )
+            Text(
+                if (installing) "Pobieranie…" else "Pobierz",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(PillShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(enabled = !installing, onClick = onInstallClick)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+        if (error != null) {
+            Text(
+                error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }

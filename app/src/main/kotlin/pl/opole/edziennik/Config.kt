@@ -33,4 +33,13 @@ object Config {
 
     const val OAUTH_CALLBACK_URL = "edziennik://oauth-callback"
     const val OAUTH_SCOPES = "grades|studies|other_emails|payments|offline_access"
+
+    /** Publiczne, nieautoryzowane GitHub API — ten sam release "latest-build",
+     * który wystawia `.github/workflows/build-apk.yml` przy każdym pushu.
+     * `RELEASE_INFO_URL` zwraca JSON z treścią releasu, z której
+     * `UpdateChecker` wyciąga `versionCode` (CI dopisuje go do treści, patrz
+     * workflow); `RELEASE_APK_URL` to stały, zawsze aktualny adres samego
+     * pliku APK (ten sam co w README pod "Pobranie gotowego APK"). */
+    const val RELEASE_INFO_URL = "https://api.github.com/repos/Roeberto/BetterUSOS/releases/tags/latest-build"
+    const val RELEASE_APK_URL = "https://github.com/Roeberto/BetterUSOS/releases/download/latest-build/app-debug.apk"
 }
