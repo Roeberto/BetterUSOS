@@ -35,8 +35,6 @@ import pl.opole.edziennik.data.UsosRepository
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
-import pl.opole.edziennik.ui.components.SessionCard
-import pl.opole.edziennik.ui.components.sessionCardClickHandler
 import pl.opole.edziennik.viewmodel.PersonDetailViewModel
 import pl.opole.edziennik.viewmodel.PersonDetailViewModelFactory
 import java.io.File
@@ -46,6 +44,15 @@ import java.io.File
  * webowej — miejsce zatrudnienia, dyżur i dane kontaktowe (na razie głównie
  * przydatne dla prowadzących). Dane są cache'owane na dysku — przycisk
  * odświeżania wymusza świeże pobranie.
+ *
+ * UWAGA: próba dodania tu sekcji "Plan zajęć tej osoby" (patrz git log)
+ * została wycofana — `tt/user?user_id=...` w tej instalacji USOS po cichu
+ * ignoruje `user_id` i zwraca plan ZALOGOWANEGO użytkownika zamiast planu
+ * oglądanej osoby (potwierdzone na żywych danych: appka pokazywała własne
+ * zajęcia pod cudzym profilem). `UsosRepository.fetchSchedule(userId=...)`
+ * zostaje w kodzie — jest poprawnie zaimplementowane po naszej stronie — ale
+ * nieużywane, dopóki nie znajdziemy właściwego sposobu pobrania cudzego
+ * planu (patrz apiref, inna metoda/scope?).
  */
 @Composable
 fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: NavHostController, userId: Int) {
@@ -162,29 +169,6 @@ fun PersonDetailScreen(apiClient: UsosApiClient, cacheDir: File, navController: 
                                 "Pokaż na stronie USOS: ${detail.emailUrl}",
                                 color = MaterialTheme.colorScheme.primary,
                             )
-                        }
-                    }
-
-                    Column {
-                        InfoLabel("Plan zajęć — najbliższe 14 dni")
-                        state.scheduleError?.let { ErrorBanner() }
-                        if (state.scheduleError == null && state.schedule.isEmpty()) {
-                            Text(
-                                "Brak zaplanowanych zajęć w tym okresie.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                state.schedule.forEach { day ->
-                                    Text("${day.weekday} ${day.dateLabel}", fontWeight = FontWeight.SemiBold)
-                                    day.entries.forEach { entry ->
-                                        SessionCard(
-                                            entry = entry,
-                                            onClick = sessionCardClickHandler(navController, entry.unitId, entry.groupNumber),
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
                 }

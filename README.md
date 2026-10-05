@@ -73,10 +73,11 @@ Workera (osobna stała `USOS_WEB_BASE_URL` w `Config.kt`).
   semestr, prowadzący (klikalni) i pełna lista uczestników (sortowana
   alfabetycznie po nazwisku, wyświetlana jako „Nazwisko Imię"), łącznie
   z samym zalogowanym użytkownikiem.
-- **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt i
-  plan zajęć tej osoby na najbliższe 14 dni (ten sam `tt/user`, co własny
-  plan, tylko z dodanym `user_id`) — żeby wiedzieć, gdzie/kiedy można ją
-  spotkać. Zdjęcie z USOS albo awatar z inicjałami (Coil).
+- **Strona osoby** (klik w prowadzącego) — zatrudnienie, dyżur, kontakt.
+  Zdjęcie z USOS albo awatar z inicjałami (Coil). (Próba dodania tu planu
+  zajęć tej osoby została wycofana — `tt/user?user_id=...` w tej instalacji
+  USOS po cichu zwraca plan ZALOGOWANEGO użytkownika, nie oglądanej osoby;
+  patrz komentarz w `PersonDetailScreen.kt`.)
 - **Powiadomienia** — sprawdzanie w tle co 12 h (`sync/SyncWorker.kt`,
   WorkManager), niezależnie od tego, czy aplikacja jest otwarta. Porównuje
   plan na 14 dni i wszystkie oceny z ostatnim znanym stanem; przy zmianie
