@@ -27,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import pl.opole.edziennik.R
 import pl.opole.edziennik.data.UsosRepository
+import pl.opole.edziennik.data.lastNameFirst
 import pl.opole.edziennik.network.UsosApiClient
 import pl.opole.edziennik.ui.components.AppIconButton
 import pl.opole.edziennik.ui.components.ErrorBanner
@@ -136,9 +137,14 @@ fun GroupDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         } else {
-                            detail.participants.forEach { participant ->
+                            // Alfabetycznie po nazwisku — i wyświetlane jako
+                            // "Nazwisko Imię" (nie domyślne "Imię Nazwisko"
+                            // z PersonRow), żeby kolejność listy odpowiadała
+                            // temu, co się czyta jako pierwsze.
+                            detail.participants.sortedBy { it.lastName }.forEach { participant ->
                                 PersonRow(
                                     person = participant,
+                                    displayName = participant.lastNameFirst,
                                     onClick = participant.id?.let { id ->
                                         { navController.navigate("person/$id") }
                                     },

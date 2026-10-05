@@ -16,11 +16,20 @@ val avatarPalette = listOf(
 data class Person(
     val id: Int?,
     val name: String,
+    val firstName: String,
+    val lastName: String,
     val initials: String,
     val photoUrl: String?,
     val titles: String,
     val avatarColor: Int,
 )
+
+/** "Nazwisko Imię" zamiast domyślnego `name` ("Imię Nazwisko") — używane w
+ * liście uczestników grupy, gdzie wygodniej czyta się/sortuje po nazwisku.
+ * Budowane z osobnych pól (nie przez dzielenie `name` na spacje), żeby
+ * imię/nazwisko zawierające spację (np. "Anna Maria") nie rozjechało kolejności. */
+val Person.lastNameFirst: String
+    get() = "$lastName $firstName".trim().ifEmpty { name }
 
 data class EmploymentPosition(val faculty: String, val position: String)
 
@@ -75,6 +84,8 @@ fun formatPerson(p: JSONObject): Person {
     return Person(
         id = p.optIntOrNull("id"),
         name = name,
+        firstName = first,
+        lastName = last,
         initials = initials,
         photoUrl = photo,
         titles = titlesText,

@@ -30,7 +30,12 @@ import pl.opole.edziennik.data.Person
  * przejścia na stronę osoby (`/osoba/<user_id>` w wersji webowej).
  */
 @Composable
-fun PersonRow(person: Person, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun PersonRow(
+    person: Person,
+    modifier: Modifier = Modifier,
+    displayName: String = person.name,
+    onClick: (() -> Unit)? = null,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -42,7 +47,7 @@ fun PersonRow(person: Person, modifier: Modifier = Modifier, onClick: (() -> Uni
         if (person.photoUrl != null) {
             AsyncImage(
                 model = person.photoUrl,
-                contentDescription = person.name,
+                contentDescription = displayName,
                 modifier = Modifier.size(40.dp).clip(CircleShape),
             )
         } else {
@@ -63,7 +68,7 @@ fun PersonRow(person: Person, modifier: Modifier = Modifier, onClick: (() -> Uni
         }
 
         Column {
-            Text(person.name, fontWeight = FontWeight.Medium)
+            Text(displayName, fontWeight = FontWeight.Medium)
             if (person.titles.isNotEmpty()) {
                 Text(person.titles, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
